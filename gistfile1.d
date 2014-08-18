@@ -26,13 +26,11 @@ if(is_vector!VectorType)
 /*void set(MatrixType)(GLUniform uniform, MatrixType matrix)
 if(is_matrix!MatrixType)
 {
-    writeln("GLUniform.set for matrix");
     uniform.set(matrix.to_gfm);
 }
 
 void set(MatrixType)(GLUniform uniform, VectorType vector)
 if(is_vector!VectorType)
 {
-    writeln("GLUniform.set for vector");
     uniform.set(vector.to_gfm);
 }*/
