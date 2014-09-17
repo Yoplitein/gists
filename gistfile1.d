@@ -1,4 +1,4 @@
-void ensure_throws(ExceptionType)(void delegate() callable, string message = "")
+void ensure_throws(ExceptionType = Exception)(void delegate() callable, string message = "")
 {
     try
     {
