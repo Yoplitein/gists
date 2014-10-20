@@ -5,11 +5,12 @@ if(is_matrix!MatrixType)
 {
     static import gfm.math;
     
-    float[] data;
+    enum matrixSize = matrix.cols * matrix.rows;
+    float[matrixSize] data;
     float *ptr = matrix.value_ptr;
     
-    foreach(_; 0 .. matrix.cols * matrix.rows)
-        data ~= [*ptr++];
+    foreach(index; 0 .. matrixSize)
+        data[index] = *ptr++;
     
     return gfm.math.Matrix!(matrix.mt, matrix.rows, matrix.cols)(data);
 }
