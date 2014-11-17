@@ -6,8 +6,8 @@ if(is_matrix!MatrixType)
     static import gfm.math;
     
     enum matrixSize = matrix.cols * matrix.rows;
-    float[matrixSize] data;
-    float *ptr = matrix.value_ptr;
+    matrix.mt[matrixSize] data;
+    matrix.mt *ptr = matrix.value_ptr;
     
     foreach(index; 0 .. matrixSize)
         data[index] = *ptr++;
