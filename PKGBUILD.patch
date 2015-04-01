@@ -1,0 +1,27 @@
+--- PKGBUILD.old        2015-03-31 06:59:59.000000000 -0700
++++ PKGBUILD    2015-04-01 08:00:47.770024293 -0700
+@@ -16,10 +16,12 @@
+ build() {
+   cd "$srcdir/sdk/$pkgname/projects/gnuc"
+ 
+-  sed -i -e "/^LOCAL/s:=.*:=${pkgdir}/usr:" makefile
++  sed -i -e "/^LOCAL/s:=.*:=${pkgdir}/usr:" Makefile
++  sed -i -e "s/)_s/)/g" Makefile
++  sed -i -e "s/^\t\$(MAKE) install_shared$//g" Makefile
+ 
+-  make
+-  make SHARED=1 VERSION=$pkgver
++  make SHLIB=lib$pkgname-$pkgver.so PREFIX=/usr
++  make SHARED=1 VERSION=$pkgver SHLIB=lib$pkgname-$pkgver.so PREFIX=/usr
+ }
+ 
+ package() {
+@@ -30,7 +32,7 @@
+              "$pkgdir"/usr/share/$pkgname \
+              "$pkgdir"/usr/share/doc/$pkgname/{articles,manual}
+ 
+-  make install
++  make install PREFIX="$pkgdir"/usr SHLIB=lib$pkgname-$pkgver.so
+   #make install SHARED=1 VERSION=$pkgver
+   #using this because the makefile creates symbolic links with full paths
+   cd "$pkgdir/usr/lib/"
