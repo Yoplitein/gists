@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ -z "$@" ]; then
-    echo "./record.sh <filename.ext>"
+    echo "./record.sh <filename.webm>"
     exit 1
 fi
 
