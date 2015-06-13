@@ -113,7 +113,7 @@ shared static this()
     //register our std.logger logger, with writeVibeMessage method
     sharedLog = new StdLogger(stdout, LogLevel.all);
     
-    //disable default logger
+    //disable default Vibe logger
     vibe.core.log.setLogLevel(vibe.core.log.LogLevel.none);
     
     //register our Vibe logger that passes messages to std.logger
