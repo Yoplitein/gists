@@ -2,12 +2,18 @@ function class(ctor, members)
     local Class = {}
     Class.__index = Class
     
-    for k, v in pairs(members) do
-        if k == "__index" then
-            error("Cannot overwrite __index on class")
+    if members then
+        if type(members) ~= "table" then
+            error("Passed non-table type as class members")
         end
         
-        Class[k] = v
+        for k, v in pairs(members) do
+            if k == "__index" then
+                error("Cannot overwrite __index on class")
+            end
+            
+            Class[k] = v
+        end
     end
     
     setmetatable(
