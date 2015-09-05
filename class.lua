@@ -1,4 +1,4 @@
-local function class(ctor, members)
+function class(ctor, members)
     local Class = {}
     Class.__index = Class
     
