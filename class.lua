@@ -33,6 +33,7 @@ function class(ctor, members)
     return Class
 end
 
+--Example usage
 local Vector = class(
     function(self, x, y)
         self.x = x
