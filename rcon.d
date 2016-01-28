@@ -58,7 +58,7 @@ ubyte[] readAll(UdpSocket socket)
     
     while(true)
     {
-        int readBytes = socket.receive(chunk);
+        size_t readBytes = socket.receive(chunk);
         
         if(readBytes <= 0)
             throw new ReadFailed;
