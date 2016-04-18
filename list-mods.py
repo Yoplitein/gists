@@ -1,4 +1,5 @@
 import glob
+import os
 import re
 import zipfile
 
@@ -6,7 +7,7 @@ nameRe = re.compile(r'"name"\s*:\s*"([^"]+)"')
 mods = []
 
 def guess(jar):
-    return jar.split("-", 1)[0]
+    return os.path.split(jar)[-1].split("-", 1)[0]
 
 for jar in glob.glob("mods/*.jar"):
     zip = zipfile.ZipFile(jar)
