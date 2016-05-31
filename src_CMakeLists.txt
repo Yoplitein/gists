@@ -1,0 +1,8 @@
+add_library(changeme_mm SHARED
+    dllapi.cpp
+    engine_api.cpp
+    h_export.cpp
+    meta_api.cpp
+    sdk_util.cpp
+)
+set_target_properties(changeme_mm PROPERTIES PREFIX "" COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
