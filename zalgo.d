@@ -27,7 +27,7 @@ void main(string[] args)
     
     if(min >= max)
     {
-        writefln("Maximum must be larger than minimum);
+        writefln("Maximum must be larger than minimum");
         
         return;
     }
