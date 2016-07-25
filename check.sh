@@ -1,0 +1,1 @@
+git log --format=format:"%H/%cd/%ad" | rdmd filter.d
