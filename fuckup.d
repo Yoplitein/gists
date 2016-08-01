@@ -25,8 +25,10 @@ void main(string[] args)
                         "%s".format(tup[1])
                 )
                 .join
+                .map!(c => uniform!"[]"(0, 1) ? c : c.toUpper)
+                .array
+                .toUTF8
         )
-        .map!(word => word.randomCaps)
         .join(" ")
         .writeln
     ;
@@ -44,18 +46,4 @@ string randomFormatting()
     string option = options.randomCover.front;
     
     return "%s%%s%s".format(option, option);
-}
-
-string randomCaps(string word)
-{
-    return word
-        .map!(c => randomBool ? c : c.toUpper)
-        .array
-        .toUTF8
-    ;
-}
-
-bool randomBool()
-{
-    return uniform!"[]"(0, 1) == 1;
 }
