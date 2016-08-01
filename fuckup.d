@@ -41,7 +41,6 @@ string randomFormatting()
         "~~",
         "`",
     ];
-    
     string option = options.randomCover.front;
     
     return "%s%%s%s".format(option, option);
