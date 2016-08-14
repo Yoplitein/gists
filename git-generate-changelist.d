@@ -74,10 +74,26 @@ Commit[] parse_commits(string[] shas)
         auto commit = Commit(sha);
 
         foreach(change; changes)
+        {
+            if(change[0].startsWith("R")) //rename
+            {
+                commit.changes ~= Change(
+                    Operation.DELETE,
+                    change[1],
+                );
+                commit.changes ~= Change(
+                    Operation.ADD,
+                    change[2],
+                );
+                
+                continue;
+            }
+            
             commit.changes ~= Change(
                 operationMapping[change[0]],
                 change[1]
             );
+        }
 
         result ~= commit;
     }
