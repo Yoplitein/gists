@@ -2,20 +2,14 @@ import std.traits;
 
 Type construct(Type)(RepresentationTypeTuple!Type args)
 {
-    
-    struct Flat
-    {
-        typeof(args) fields;
-    }
-    
     static union Conv
     {
         Type obj;
-        Flat flat;
+        struct { typeof(args) fields; }
     }
     
     Conv conv;
-    conv.flat.fields = args;
+    conv.fields = args;
     
     return conv.obj;
 }
