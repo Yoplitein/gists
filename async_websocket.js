@@ -40,8 +40,7 @@ class AsyncWebSocket
                     return;
                 }
 
-                let ret = this.socket.close(code, reason);
-                resolve(ret);
+                resolve(this.socket.close(code, reason));
 
                 this.socket = null;
             }
