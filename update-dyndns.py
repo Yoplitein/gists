@@ -14,17 +14,25 @@ import urllib2, time, syslog, smtplib, sys
 from email.mime.text import MIMEText
 
 #settings
-URL = "https://freedns.afraid.org/dynamic/update.php?key"
+URL = [
+    # for FreeDNS
+    "https://freedns.afraid.org/dynamic/update.php?key"
+    
+    # NameCheap
+    "https://dynamicdns.park-your-domain.com/update?host=@&domain=example.com&password=key"
+    
+    # any other endpoint that can be triggered with a GET request
+]
 
 ##email settings
 SEND_EMAIL = True
-EMAIL_FROM = "crond <cron@>"
-EMAIL_TO   = ""
+EMAIL_FROM = "crond <cron@host>"
+EMAIL_TO   = "me@example.com"
 
 EMAIL_CRON = (True in [(x in sys.argv) for x in ["-c", "--cron"]])
 
-def doRequest():
-    req = urllib2.urlopen(URL)
+def doRequest(url):
+    req = urllib2.urlopen(url)
     return req.getcode(), req.read()
 
 def sendEmail(subject, body):
@@ -52,9 +60,9 @@ def log(message, error=False, emailOverride=False):
 
         sendEmail(subject, message)
 
-def main():
+def main(url):
     try:
-        code, response = doRequest()
+        code, response = doRequest(url)
     except (urllib2.HTTPError, urllib2.URLError) as e:
         reason = str(e)
 
@@ -64,16 +72,12 @@ def main():
     _resp = response.lower()
 
     #error check
-    if True in [x in _resp for x in ["bad request", "unable to locate", "invalid update"]]:
+    if True in [x in _resp for x in ["validation error", "no records updated", "do not match"]]:
         log("Got following while updating DynDNS: %s" % response, error=True)
         sys.exit(1)
-
-    #update check
-    if "updated" in _resp:
-        log("DynDNS address updated. Message: %s" % response)
-        sys.exit()
 
     log("[update-dyndns] Address has not changed", emailOverride=True)
 
 if __name__ == "__main__":
-    main()
+    for url in URL:
+        main(url)
