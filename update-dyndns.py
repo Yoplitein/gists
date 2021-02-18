@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 """
 Updater script for freedns.afraid.org
 (Should work with other services that have you simply GET a URL to update)
@@ -10,7 +10,7 @@ Additionally, passing --cron as an argument will let cron handle the email.
 Suggested crontab entry:
 0 0,12 * * * /usr/local/bin/update-dyndns
 """
-import urllib2, time, syslog, smtplib, sys
+import urllib.request, urllib.error, time, syslog, smtplib, sys
 from email.mime.text import MIMEText
 
 #settings
@@ -32,8 +32,8 @@ EMAIL_TO   = "me@example.com"
 EMAIL_CRON = (True in [(x in sys.argv) for x in ["-c", "--cron"]])
 
 def doRequest(url):
-    req = urllib2.urlopen(url)
-    return req.getcode(), req.read()
+    with urllib.request.urlopen(url) as req:
+        return req.getcode(), req.read().decode("utf-8", "ignore")
 
 def sendEmail(subject, body):
     message = MIMEText(body)
@@ -49,7 +49,7 @@ def log(message, error=False, emailOverride=False):
     if emailOverride or not SEND_EMAIL:
         syslog.syslog("[update-dyndns] %s" % message)
     elif EMAIL_CRON:
-        print "[update-dyndns]", message
+        print("[update-dyndns]", message)
     else:
         subject = "update-dyndns "
 
@@ -63,7 +63,7 @@ def log(message, error=False, emailOverride=False):
 def main(url):
     try:
         code, response = doRequest(url)
-    except (urllib2.HTTPError, urllib2.URLError) as e:
+    except (urllib.error.HTTPError, urllib.error.URLError) as e:
         reason = str(e)
 
         log("Error: %s" % reason, error=True)
