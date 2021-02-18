@@ -72,7 +72,7 @@ def main(url):
     _resp = response.lower()
 
     #error check
-    if True in [x in _resp for x in ["validation error", "no records updated", "do not match"]]:
+    if any(x in _resp for x in ["validation error", "no records updated", "do not match"]):
         log("Got following while updating DynDNS: %s" % response, error=True)
         sys.exit(1)
 
