@@ -25,373 +25,373 @@ fn main() {
  * documentation above each, for more info.
  */
 pub struct OpenSimplex2F {
-	perm: Vec<i16>,
-	permGrad2: Vec<Grad2>,
-	permGrad3: Vec<Grad3>,
-	permGrad4: Vec<Grad4>,
+    perm: Vec<i16>,
+    permGrad2: Vec<Grad2>,
+    permGrad3: Vec<Grad3>,
+    permGrad4: Vec<Grad4>,
 }
 
 impl OpenSimplex2F {
-	pub fn new(mut seed: i64) -> Self {
-		let mut perm = vec![Default::default(); PSIZE as usize];
-		let mut permGrad2 = vec![Default::default(); PSIZE as usize];
-		let mut permGrad3 = vec![Default::default(); PSIZE as usize];
-		let mut permGrad4 = vec![Default::default(); PSIZE as usize];
-		let mut source: Vec<i16> = (0 .. PSIZE as i16).collect::<Vec<_>>();
+    pub fn new(mut seed: i64) -> Self {
+        let mut perm = vec![Default::default(); PSIZE as usize];
+        let mut permGrad2 = vec![Default::default(); PSIZE as usize];
+        let mut permGrad3 = vec![Default::default(); PSIZE as usize];
+        let mut permGrad4 = vec![Default::default(); PSIZE as usize];
+        let mut source: Vec<i16> = (0 .. PSIZE as i16).collect::<Vec<_>>();
         let staticData = get_static_data();
-		
+        
         for i in (0 .. PSIZE as i64).rev() {
-			seed = seed.overflowing_mul(6364136223846793005).0.overflowing_add(1442695040888963407).0;
-			let mut r: i32 = ((seed + 31i64) % (i + 1i64)) as i32;
-			if r < 0 { r += i as i32 + 1; }
-			perm[i as usize] = source[r as usize];
-			permGrad2[i as usize] = staticData.gradients_2d[perm[i as usize] as usize];
-			permGrad3[i as usize] = staticData.gradients_3d[perm[i as usize] as usize];
-			permGrad4[i as usize] = staticData.gradients_4d[perm[i as usize] as usize];
-			source[r as usize] = source[i as usize];
-		}
+            seed = seed.overflowing_mul(6364136223846793005).0.overflowing_add(1442695040888963407).0;
+            let mut r: i32 = ((seed + 31i64) % (i + 1i64)) as i32;
+            if r < 0 { r += i as i32 + 1; }
+            perm[i as usize] = source[r as usize];
+            permGrad2[i as usize] = staticData.gradients_2d[perm[i as usize] as usize];
+            permGrad3[i as usize] = staticData.gradients_3d[perm[i as usize] as usize];
+            permGrad4[i as usize] = staticData.gradients_4d[perm[i as usize] as usize];
+            source[r as usize] = source[i as usize];
+        }
         
         Self { perm, permGrad2, permGrad3, permGrad4 }
-	}
-	
-	/*
-	 * Noise Evaluators
-	 */
-	
-	/*FIXME
-	 * 2D Simplex noise, standard lattice orientation.
-	 */
-	pub fn noise2(&self, x: f64, y: f64) -> f64 {
-		
-		// Get points for A2* lattice
-		let s: f64 = 0.366025403784439 * (x + y);
-		let xs: f64 = x + s;
+    }
+    
+    /*
+     * Noise Evaluators
+     */
+    
+    /*FIXME
+     * 2D Simplex noise, standard lattice orientation.
+     */
+    pub fn noise2(&self, x: f64, y: f64) -> f64 {
+        
+        // Get points for A2* lattice
+        let s: f64 = 0.366025403784439 * (x + y);
+        let xs: f64 = x + s;
         let ys = y + s;
-		
-		self.noise2_Base(xs, ys)
-	}
-	
-	/*FIXME
-	 * 2D Simplex noise, with Y pointing down the main diagonal.
-	 * Might be better for a 2D sandbox style game, where Y is vertical.
-	 * Probably slightly less optimal for heightmaps or continent maps.
-	 */
-	/* public f64 noise2_XBeforeY(f64 x, f64 y) {
-		
-		// Skew transform and rotation baked into one.
-		f64 xx = x * 0.7071067811865476;
-		f64 yy = y * 1.224744871380249;
-		
-		return noise2_Base(yy + xx, yy - xx);
-	} */
-	
-	/*FIXME
-	 * 2D Simplex noise base.
-	 * Lookup table implementation inspired by DigitalShadow.
-	 */
-	fn noise2_Base(&self, xs: f64, ys: f64) -> f64 {
-		let mut value = 0f64;
-		
-		// Get base points and offsets
-		let xsb = f64::floor(xs) as i32;
+        
+        self.noise2_Base(xs, ys)
+    }
+    
+    /*FIXME
+     * 2D Simplex noise, with Y pointing down the main diagonal.
+     * Might be better for a 2D sandbox style game, where Y is vertical.
+     * Probably slightly less optimal for heightmaps or continent maps.
+     */
+    /* public f64 noise2_XBeforeY(f64 x, f64 y) {
+        
+        // Skew transform and rotation baked into one.
+        f64 xx = x * 0.7071067811865476;
+        f64 yy = y * 1.224744871380249;
+        
+        return noise2_Base(yy + xx, yy - xx);
+    } */
+    
+    /*FIXME
+     * 2D Simplex noise base.
+     * Lookup table implementation inspired by DigitalShadow.
+     */
+    fn noise2_Base(&self, xs: f64, ys: f64) -> f64 {
+        let mut value = 0f64;
+        
+        // Get base points and offsets
+        let xsb = f64::floor(xs) as i32;
         let ysb = f64::floor(ys) as i32;
-		let xsi = xs - xsb as f64;
+        let xsi = xs - xsb as f64;
         let ysi = ys - ysb as f64;
-		
-		// Index to point list
-		let index = ((ysi - xsi) / 2.0 + 1.0) as usize;
-		
-		let ssi = (xsi + ysi) * -0.211324865405187;
-		let xi = xsi + ssi;
+        
+        // Index to point list
+        let index = ((ysi - xsi) / 2.0 + 1.0) as usize;
+        
+        let ssi = (xsi + ysi) * -0.211324865405187;
+        let xi = xsi + ssi;
         let yi = ysi + ssi;
         let staticData = get_static_data();
 
-		// Point contributions
-		for i in 0 .. 3 {
-			let c = staticData.lookup_2d[index + i];
+        // Point contributions
+        for i in 0 .. 3 {
+            let c = staticData.lookup_2d[index + i];
 
-			let dx = xi + c.dx;
+            let dx = xi + c.dx;
             let dy = yi + c.dy;
-			let attn = 0.5 - dx * dx - dy * dy;
-			if attn <= 0.0 { continue; }
+            let attn = 0.5 - dx * dx - dy * dy;
+            if attn <= 0.0 { continue; }
 
-			let pxm = (xsb + c.xsv) & PMASK;
+            let pxm = (xsb + c.xsv) & PMASK;
             let pym = (ysb + c.ysv) & PMASK;
-			let grad = self.permGrad2[(self.perm[pxm as usize] as i32 ^ pym) as usize];
-			let extrapolation = grad.dx * dx + grad.dy * dy;
-			
+            let grad = self.permGrad2[(self.perm[pxm as usize] as i32 ^ pym) as usize];
+            let extrapolation = grad.dx * dx + grad.dy * dy;
+            
             let attn = attn * attn;
-			value += attn * attn * extrapolation;
-		}
-		
-		return value;
-	}
-	
-	/*FIXME
-	 * 3D Re-oriented 4-point BCC noise, classic orientation.
-	 * Proper substitute for 3D Simplex in light of Forbidden Formulae.
-	 * Use noise3_XYBeforeZ or noise3_XZBeforeY instead, wherever appropriate.
-	 */
-	/*public f64 noise3_Classic(f64 x, f64 y, f64 z) {
-		
-		// Re-orient the cubic lattices via rotation, to produce the expected look on cardinal planar slices.
-		// If texturing objects that don't tend to have cardinal plane faces, you could even remove this.
-		// Orthonormal rotation. Not a skew transform.
-		f64 r = (2.0 / 3.0) * (x + y + z);
-		f64 xr = r - x, yr = r - y, zr = r - z;
-		
-		// Evaluate both lattices to form a BCC lattice.
-		return noise3_BCC(xr, yr, zr);
-	}*/
-	
-	/*FIXME
-	 * 3D Re-oriented 4-point BCC noise, with better visual isotropy in (X, Y).
-	 * Recommended for 3D terrain and time-varied animations.
-	 * The Z coordinate should always be the "different" coordinate in your use case.
-	 * If Y is vertical in world coordinates, call noise3_XYBeforeZ(x, z, Y) or use noise3_XZBeforeY.
-	 * If Z is vertical in world coordinates, call noise3_XYBeforeZ(x, y, Z).
-	 * For a time varied animation, call noise3_XYBeforeZ(x, y, T).
-	 */
-	/*public f64 noise3_XYBeforeZ(f64 x, f64 y, f64 z) {
-		
-		// Re-orient the cubic lattices without skewing, to make X and Y triangular like 2D.
-		// Orthonormal rotation. Not a skew transform.
-		f64 xy = x + y;
-		f64 s2 = xy * -0.211324865405187;
-		f64 zz = z * 0.577350269189626;
-		f64 xr = x + s2 - zz, yr = y + s2 - zz;
-		f64 zr = xy * 0.577350269189626 + zz;
-		
-		// Evaluate both lattices to form a BCC lattice.
-		return noise3_BCC(xr, yr, zr);
-	}*/
-	
-	/*FIXME
-	 * 3D Re-oriented 4-point BCC noise, with better visual isotropy in (X, Z).
-	 * Recommended for 3D terrain and time-varied animations.
-	 * The Y coordinate should always be the "different" coordinate in your use case.
-	 * If Y is vertical in world coordinates, call noise3_XZBeforeY(x, Y, z).
-	 * If Z is vertical in world coordinates, call noise3_XZBeforeY(x, Z, y) or use noise3_XYBeforeZ.
-	 * For a time varied animation, call noise3_XZBeforeY(x, T, y) or use noise3_XYBeforeZ.
-	 */
-	/*public f64 noise3_XZBeforeY(f64 x, f64 y, f64 z) {
-		
-		// Re-orient the cubic lattices without skewing, to make X and Z triangular like 2D.
-		// Orthonormal rotation. Not a skew transform.
-		f64 xz = x + z;
-		f64 s2 = xz * -0.211324865405187;
-		f64 yy = y * 0.577350269189626;
-		f64 xr = x + s2 - yy; f64 zr = z + s2 - yy;
-		f64 yr = xz * 0.577350269189626 + yy;
-		
-		// Evaluate both lattices to form a BCC lattice.
-		return noise3_BCC(xr, yr, zr);
-	}*/
-	
-	/*FIXME
-	 * Generate overlapping cubic lattices for 3D Re-oriented BCC noise.
-	 * Lookup table implementation inspired by DigitalShadow.
-	 * It was actually faster to narrow down the points in the loop itself,
-	 * than to build up the index with enough info to isolate 4 points.
-	 */
-	/*private f64 noise3_BCC(f64 xr, f64 yr, f64 zr) {
-		
-		// Get base and offsets inside cube of first lattice.
-		int xrb = fastFloor(xr), yrb = fastFloor(yr), zrb = fastFloor(zr);
-		f64 xri = xr - xrb, yri = yr - yrb, zri = zr - zrb;
-		
-		// Identify which octant of the cube we're in. This determines which cell
-		// in the other cubic lattice we're in, and also narrows down one point on each.
-		int xht = (int)(xri + 0.5), yht = (int)(yri + 0.5), zht = (int)(zri + 0.5);
-		int index = (xht << 0) | (yht << 1) | (zht << 2);
-		
-		// Point contributions
-		f64 value = 0;
-		LatticePoint3D c = LOOKUP_3D[index];
-		while (c != null) {
-			f64 dxr = xri + c.dxr, dyr = yri + c.dyr, dzr = zri + c.dzr;
-			f64 attn = 0.5 - dxr * dxr - dyr * dyr - dzr * dzr;
-			if (attn < 0) {
-				c = c.nextOnFailure;
-			} else {
-				int pxm = (xrb + c.xrv) & PMASK, pym = (yrb + c.yrv) & PMASK, pzm = (zrb + c.zrv) & PMASK;
-				Grad3 grad = permGrad3[perm[perm[pxm] ^ pym] ^ pzm];
-				f64 extrapolation = grad.dx * dxr + grad.dy * dyr + grad.dz * dzr;
-				
-				attn *= attn;
-				value += attn * attn * extrapolation;
-				c = c.nextOnSuccess;
-			}
-		}
-		return value;
-	}*/
-	
-	/*FIXME
-	 * 4D OpenSimplex2F noise, classic lattice orientation.
-	 */
-	/*public f64 noise4_Classic(f64 x, f64 y, f64 z, f64 w) {
-		
-		// Get points for A4 lattice
-		f64 s = -0.138196601125011 * (x + y + z + w);
-		f64 xs = x + s, ys = y + s, zs = z + s, ws = w + s;
-		
-		return noise4_Base(xs, ys, zs, ws);
-	}*/
-	
-	/*FIXME
-	 * 4D OpenSimplex2F noise, with XY and ZW forming orthogonal triangular-based planes.
-	 * Recommended for 3D terrain, where X and Y (or Z and W) are horizontal.
-	 * Recommended for noise(x, y, sin(time), cos(time)) trick.
-	 */
-	/*public f64 noise4_XYBeforeZW(f64 x, f64 y, f64 z, f64 w) {
-		
-		f64 s2 = (x + y) * -0.178275657951399372 + (z + w) * 0.215623393288842828;
-		f64 t2 = (z + w) * -0.403949762580207112 + (x + y) * -0.375199083010075342;
-		f64 xs = x + s2, ys = y + s2, zs = z + t2, ws = w + t2;
-		
-		return noise4_Base(xs, ys, zs, ws);
-	}*/
-	
-	/*FIXME
-	 * 4D OpenSimplex2F noise, with XZ and YW forming orthogonal triangular-based planes.
-	 * Recommended for 3D terrain, where X and Z (or Y and W) are horizontal.
-	 */
-	/*public f64 noise4_XZBeforeYW(f64 x, f64 y, f64 z, f64 w) {
-		
-		f64 s2 = (x + z) * -0.178275657951399372 + (y + w) * 0.215623393288842828;
-		f64 t2 = (y + w) * -0.403949762580207112 + (x + z) * -0.375199083010075342;
-		f64 xs = x + s2, ys = y + t2, zs = z + s2, ws = w + t2;
-		
-		return noise4_Base(xs, ys, zs, ws);
-	}*/
-	
-	/*FIXME
-	 * 4D OpenSimplex2F noise, with XYZ oriented like noise3_Classic,
-	 * and W for an extra degree of freedom. W repeats eventually.
-	 * Recommended for time-varied animations which texture a 3D object (W=time)
-	 */
-	/*public f64 noise4_XYZBeforeW(f64 x, f64 y, f64 z, f64 w) {
-		
-		f64 xyz = x + y + z;
-		f64 ww = w * 0.2236067977499788;
-		f64 s2 = xyz * -0.16666666666666666 + ww;
-		f64 xs = x + s2, ys = y + s2, zs = z + s2, ws = -0.5 * xyz + ww;
-		
-		return noise4_Base(xs, ys, zs, ws);
-	}*/
-	
-	/*FIXME
-	 * 4D OpenSimplex2F noise base.
-	 * Current implementation not fully optimized by lookup tables.
-	 * But still comes out slightly ahead of Gustavson's Simplex in tests.
-	 */
-	/*private f64 noise4_Base(f64 xs, f64 ys, f64 zs, f64 ws) {
-		f64 value = 0;
-		
-		// Get base points and offsets
-		int xsb = fastFloor(xs), ysb = fastFloor(ys), zsb = fastFloor(zs), wsb = fastFloor(ws);
-		f64 xsi = xs - xsb, ysi = ys - ysb, zsi = zs - zsb, wsi = ws - wsb;
-		
-		// If we're in the lower half, flip so we can repeat the code for the upper half. We'll flip back later.
-		f64 siSum = xsi + ysi + zsi + wsi;
-		f64 ssi = siSum * 0.309016994374947; // Prep for vertex contributions.
-		boolean inLowerHalf = (siSum < 2);
-		if (inLowerHalf) {
-			xsi = 1 - xsi; ysi = 1 - ysi; zsi = 1 - zsi; wsi = 1 - wsi;
-			siSum = 4 - siSum;
-		}
-		
-		// Consider opposing vertex pairs of the octahedron formed by the central cross-section of the stretched tesseract
-		f64 aabb = xsi + ysi - zsi - wsi, abab = xsi - ysi + zsi - wsi, abba = xsi - ysi - zsi + wsi;
-		f64 aabbScore = Math.abs(aabb), ababScore = Math.abs(abab), abbaScore = Math.abs(abba);
-		
-		// Find the closest point on the stretched tesseract as if it were the upper half
-		int vertexIndex, via, vib;
-		f64 asi, bsi;
-		if (aabbScore > ababScore && aabbScore > abbaScore) {
-			if (aabb > 0) {
-				asi = zsi; bsi = wsi; vertexIndex = 0b0011; via = 0b0111; vib = 0b1011;
-			} else {
-				asi = xsi; bsi = ysi; vertexIndex = 0b1100; via = 0b1101; vib = 0b1110;
-			}
-		} else if (ababScore > abbaScore) {
-			if (abab > 0) {
-				asi = ysi; bsi = wsi; vertexIndex = 0b0101; via = 0b0111; vib = 0b1101;
-			} else {
-				asi = xsi; bsi = zsi; vertexIndex = 0b1010; via = 0b1011; vib = 0b1110;
-			}
-		} else {
-			if (abba > 0) {
-				asi = ysi; bsi = zsi; vertexIndex = 0b1001; via = 0b1011; vib = 0b1101;
-			} else {
-				asi = xsi; bsi = wsi; vertexIndex = 0b0110; via = 0b0111; vib = 0b1110;
-			}
-		}
-		if (bsi > asi) {
-			via = vib;
-			f64 temp = bsi;
-			bsi = asi;
-			asi = temp;
-		}
-		if (siSum + asi > 3) {
-			vertexIndex = via;
-			if (siSum + bsi > 4) {
-				vertexIndex = 0b1111;
-			}
-		}
-		
-		// Now flip back if we're actually in the lower half.
-		if (inLowerHalf) {
-			xsi = 1 - xsi; ysi = 1 - ysi; zsi = 1 - zsi; wsi = 1 - wsi;
-			vertexIndex ^= 0b1111;
-		}
-		
-		// Five points to add, total, from five copies of the A4 lattice.
-		for (int i = 0; i < 5; i++) {
-		
-			// Update xsb/etc. and add the lattice point's contribution.
-			LatticePoint4D c = VERTICES_4D[vertexIndex];
-			xsb += c.xsv; ysb += c.ysv; zsb += c.zsv; wsb += c.wsv;
-			f64 xi = xsi + ssi, yi = ysi + ssi, zi = zsi + ssi, wi = wsi + ssi;
-			f64 dx = xi + c.dx, dy = yi + c.dy, dz = zi + c.dz, dw = wi + c.dw;
-			f64 attn = 0.5 - dx * dx - dy * dy - dz * dz - dw * dw;
-			if (attn > 0) {
-				int pxm = xsb & PMASK, pym = ysb & PMASK, pzm = zsb & PMASK, pwm = wsb & PMASK;
-				Grad4 grad = permGrad4[perm[perm[perm[pxm] ^ pym] ^ pzm] ^ pwm];
-				f64 ramped = grad.dx * dx + grad.dy * dy + grad.dz * dz + grad.dw * dw;
-				
-				attn *= attn;
-				value += attn * attn * ramped;
-			}
-			
-			// Maybe this helps the compiler/JVM/LLVM/etc. know we can end the loop here. Maybe not.
-			if (i == 4) break;
-			
-			// Update the relative skewed coordinates to reference the vertex we just added.
-			// Rather, reference its counterpart on the lattice copy that is shifted down by
-			// the vector <-0.2, -0.2, -0.2, -0.2>
-			xsi += c.xsi; ysi += c.ysi; zsi += c.zsi; wsi += c.wsi;
-			ssi += c.ssiDelta;
-			
-			// Next point is the closest vertex on the 4-simplex whose base vertex is the aforementioned vertex.
-			f64 score0 = 1.0 + ssi * (-1.0 / 0.309016994374947); // Seems slightly faster than 1.0-xsi-ysi-zsi-wsi
-			vertexIndex = 0b0000;
-			if (xsi >= ysi && xsi >= zsi && xsi >= wsi && xsi >= score0) {
-				vertexIndex = 0b0001;
-			}
-			else if (ysi > xsi && ysi >= zsi && ysi >= wsi && ysi >= score0) {
-				vertexIndex = 0b0010;
-			}
-			else if (zsi > xsi && zsi > ysi && zsi >= wsi && zsi >= score0) {
-				vertexIndex = 0b0100;
-			}
-			else if (wsi > xsi && wsi > ysi && wsi > zsi && wsi >= score0) {
-				vertexIndex = 0b1000;
-			}
-		}
-		
-		return value;
-	}*/
+            value += attn * attn * extrapolation;
+        }
+        
+        return value;
+    }
+    
+    /*FIXME
+     * 3D Re-oriented 4-point BCC noise, classic orientation.
+     * Proper substitute for 3D Simplex in light of Forbidden Formulae.
+     * Use noise3_XYBeforeZ or noise3_XZBeforeY instead, wherever appropriate.
+     */
+    /*public f64 noise3_Classic(f64 x, f64 y, f64 z) {
+        
+        // Re-orient the cubic lattices via rotation, to produce the expected look on cardinal planar slices.
+        // If texturing objects that don't tend to have cardinal plane faces, you could even remove this.
+        // Orthonormal rotation. Not a skew transform.
+        f64 r = (2.0 / 3.0) * (x + y + z);
+        f64 xr = r - x, yr = r - y, zr = r - z;
+        
+        // Evaluate both lattices to form a BCC lattice.
+        return noise3_BCC(xr, yr, zr);
+    }*/
+    
+    /*FIXME
+     * 3D Re-oriented 4-point BCC noise, with better visual isotropy in (X, Y).
+     * Recommended for 3D terrain and time-varied animations.
+     * The Z coordinate should always be the "different" coordinate in your use case.
+     * If Y is vertical in world coordinates, call noise3_XYBeforeZ(x, z, Y) or use noise3_XZBeforeY.
+     * If Z is vertical in world coordinates, call noise3_XYBeforeZ(x, y, Z).
+     * For a time varied animation, call noise3_XYBeforeZ(x, y, T).
+     */
+    /*public f64 noise3_XYBeforeZ(f64 x, f64 y, f64 z) {
+        
+        // Re-orient the cubic lattices without skewing, to make X and Y triangular like 2D.
+        // Orthonormal rotation. Not a skew transform.
+        f64 xy = x + y;
+        f64 s2 = xy * -0.211324865405187;
+        f64 zz = z * 0.577350269189626;
+        f64 xr = x + s2 - zz, yr = y + s2 - zz;
+        f64 zr = xy * 0.577350269189626 + zz;
+        
+        // Evaluate both lattices to form a BCC lattice.
+        return noise3_BCC(xr, yr, zr);
+    }*/
+    
+    /*FIXME
+     * 3D Re-oriented 4-point BCC noise, with better visual isotropy in (X, Z).
+     * Recommended for 3D terrain and time-varied animations.
+     * The Y coordinate should always be the "different" coordinate in your use case.
+     * If Y is vertical in world coordinates, call noise3_XZBeforeY(x, Y, z).
+     * If Z is vertical in world coordinates, call noise3_XZBeforeY(x, Z, y) or use noise3_XYBeforeZ.
+     * For a time varied animation, call noise3_XZBeforeY(x, T, y) or use noise3_XYBeforeZ.
+     */
+    /*public f64 noise3_XZBeforeY(f64 x, f64 y, f64 z) {
+        
+        // Re-orient the cubic lattices without skewing, to make X and Z triangular like 2D.
+        // Orthonormal rotation. Not a skew transform.
+        f64 xz = x + z;
+        f64 s2 = xz * -0.211324865405187;
+        f64 yy = y * 0.577350269189626;
+        f64 xr = x + s2 - yy; f64 zr = z + s2 - yy;
+        f64 yr = xz * 0.577350269189626 + yy;
+        
+        // Evaluate both lattices to form a BCC lattice.
+        return noise3_BCC(xr, yr, zr);
+    }*/
+    
+    /*FIXME
+     * Generate overlapping cubic lattices for 3D Re-oriented BCC noise.
+     * Lookup table implementation inspired by DigitalShadow.
+     * It was actually faster to narrow down the points in the loop itself,
+     * than to build up the index with enough info to isolate 4 points.
+     */
+    /*private f64 noise3_BCC(f64 xr, f64 yr, f64 zr) {
+        
+        // Get base and offsets inside cube of first lattice.
+        int xrb = fastFloor(xr), yrb = fastFloor(yr), zrb = fastFloor(zr);
+        f64 xri = xr - xrb, yri = yr - yrb, zri = zr - zrb;
+        
+        // Identify which octant of the cube we're in. This determines which cell
+        // in the other cubic lattice we're in, and also narrows down one point on each.
+        int xht = (int)(xri + 0.5), yht = (int)(yri + 0.5), zht = (int)(zri + 0.5);
+        int index = (xht << 0) | (yht << 1) | (zht << 2);
+        
+        // Point contributions
+        f64 value = 0;
+        LatticePoint3D c = LOOKUP_3D[index];
+        while (c != null) {
+            f64 dxr = xri + c.dxr, dyr = yri + c.dyr, dzr = zri + c.dzr;
+            f64 attn = 0.5 - dxr * dxr - dyr * dyr - dzr * dzr;
+            if (attn < 0) {
+                c = c.nextOnFailure;
+            } else {
+                int pxm = (xrb + c.xrv) & PMASK, pym = (yrb + c.yrv) & PMASK, pzm = (zrb + c.zrv) & PMASK;
+                Grad3 grad = permGrad3[perm[perm[pxm] ^ pym] ^ pzm];
+                f64 extrapolation = grad.dx * dxr + grad.dy * dyr + grad.dz * dzr;
+                
+                attn *= attn;
+                value += attn * attn * extrapolation;
+                c = c.nextOnSuccess;
+            }
+        }
+        return value;
+    }*/
+    
+    /*FIXME
+     * 4D OpenSimplex2F noise, classic lattice orientation.
+     */
+    /*public f64 noise4_Classic(f64 x, f64 y, f64 z, f64 w) {
+        
+        // Get points for A4 lattice
+        f64 s = -0.138196601125011 * (x + y + z + w);
+        f64 xs = x + s, ys = y + s, zs = z + s, ws = w + s;
+        
+        return noise4_Base(xs, ys, zs, ws);
+    }*/
+    
+    /*FIXME
+     * 4D OpenSimplex2F noise, with XY and ZW forming orthogonal triangular-based planes.
+     * Recommended for 3D terrain, where X and Y (or Z and W) are horizontal.
+     * Recommended for noise(x, y, sin(time), cos(time)) trick.
+     */
+    /*public f64 noise4_XYBeforeZW(f64 x, f64 y, f64 z, f64 w) {
+        
+        f64 s2 = (x + y) * -0.178275657951399372 + (z + w) * 0.215623393288842828;
+        f64 t2 = (z + w) * -0.403949762580207112 + (x + y) * -0.375199083010075342;
+        f64 xs = x + s2, ys = y + s2, zs = z + t2, ws = w + t2;
+        
+        return noise4_Base(xs, ys, zs, ws);
+    }*/
+    
+    /*FIXME
+     * 4D OpenSimplex2F noise, with XZ and YW forming orthogonal triangular-based planes.
+     * Recommended for 3D terrain, where X and Z (or Y and W) are horizontal.
+     */
+    /*public f64 noise4_XZBeforeYW(f64 x, f64 y, f64 z, f64 w) {
+        
+        f64 s2 = (x + z) * -0.178275657951399372 + (y + w) * 0.215623393288842828;
+        f64 t2 = (y + w) * -0.403949762580207112 + (x + z) * -0.375199083010075342;
+        f64 xs = x + s2, ys = y + t2, zs = z + s2, ws = w + t2;
+        
+        return noise4_Base(xs, ys, zs, ws);
+    }*/
+    
+    /*FIXME
+     * 4D OpenSimplex2F noise, with XYZ oriented like noise3_Classic,
+     * and W for an extra degree of freedom. W repeats eventually.
+     * Recommended for time-varied animations which texture a 3D object (W=time)
+     */
+    /*public f64 noise4_XYZBeforeW(f64 x, f64 y, f64 z, f64 w) {
+        
+        f64 xyz = x + y + z;
+        f64 ww = w * 0.2236067977499788;
+        f64 s2 = xyz * -0.16666666666666666 + ww;
+        f64 xs = x + s2, ys = y + s2, zs = z + s2, ws = -0.5 * xyz + ww;
+        
+        return noise4_Base(xs, ys, zs, ws);
+    }*/
+    
+    /*FIXME
+     * 4D OpenSimplex2F noise base.
+     * Current implementation not fully optimized by lookup tables.
+     * But still comes out slightly ahead of Gustavson's Simplex in tests.
+     */
+    /*private f64 noise4_Base(f64 xs, f64 ys, f64 zs, f64 ws) {
+        f64 value = 0;
+        
+        // Get base points and offsets
+        int xsb = fastFloor(xs), ysb = fastFloor(ys), zsb = fastFloor(zs), wsb = fastFloor(ws);
+        f64 xsi = xs - xsb, ysi = ys - ysb, zsi = zs - zsb, wsi = ws - wsb;
+        
+        // If we're in the lower half, flip so we can repeat the code for the upper half. We'll flip back later.
+        f64 siSum = xsi + ysi + zsi + wsi;
+        f64 ssi = siSum * 0.309016994374947; // Prep for vertex contributions.
+        boolean inLowerHalf = (siSum < 2);
+        if (inLowerHalf) {
+            xsi = 1 - xsi; ysi = 1 - ysi; zsi = 1 - zsi; wsi = 1 - wsi;
+            siSum = 4 - siSum;
+        }
+        
+        // Consider opposing vertex pairs of the octahedron formed by the central cross-section of the stretched tesseract
+        f64 aabb = xsi + ysi - zsi - wsi, abab = xsi - ysi + zsi - wsi, abba = xsi - ysi - zsi + wsi;
+        f64 aabbScore = Math.abs(aabb), ababScore = Math.abs(abab), abbaScore = Math.abs(abba);
+        
+        // Find the closest point on the stretched tesseract as if it were the upper half
+        int vertexIndex, via, vib;
+        f64 asi, bsi;
+        if (aabbScore > ababScore && aabbScore > abbaScore) {
+            if (aabb > 0) {
+                asi = zsi; bsi = wsi; vertexIndex = 0b0011; via = 0b0111; vib = 0b1011;
+            } else {
+                asi = xsi; bsi = ysi; vertexIndex = 0b1100; via = 0b1101; vib = 0b1110;
+            }
+        } else if (ababScore > abbaScore) {
+            if (abab > 0) {
+                asi = ysi; bsi = wsi; vertexIndex = 0b0101; via = 0b0111; vib = 0b1101;
+            } else {
+                asi = xsi; bsi = zsi; vertexIndex = 0b1010; via = 0b1011; vib = 0b1110;
+            }
+        } else {
+            if (abba > 0) {
+                asi = ysi; bsi = zsi; vertexIndex = 0b1001; via = 0b1011; vib = 0b1101;
+            } else {
+                asi = xsi; bsi = wsi; vertexIndex = 0b0110; via = 0b0111; vib = 0b1110;
+            }
+        }
+        if (bsi > asi) {
+            via = vib;
+            f64 temp = bsi;
+            bsi = asi;
+            asi = temp;
+        }
+        if (siSum + asi > 3) {
+            vertexIndex = via;
+            if (siSum + bsi > 4) {
+                vertexIndex = 0b1111;
+            }
+        }
+        
+        // Now flip back if we're actually in the lower half.
+        if (inLowerHalf) {
+            xsi = 1 - xsi; ysi = 1 - ysi; zsi = 1 - zsi; wsi = 1 - wsi;
+            vertexIndex ^= 0b1111;
+        }
+        
+        // Five points to add, total, from five copies of the A4 lattice.
+        for (int i = 0; i < 5; i++) {
+        
+            // Update xsb/etc. and add the lattice point's contribution.
+            LatticePoint4D c = VERTICES_4D[vertexIndex];
+            xsb += c.xsv; ysb += c.ysv; zsb += c.zsv; wsb += c.wsv;
+            f64 xi = xsi + ssi, yi = ysi + ssi, zi = zsi + ssi, wi = wsi + ssi;
+            f64 dx = xi + c.dx, dy = yi + c.dy, dz = zi + c.dz, dw = wi + c.dw;
+            f64 attn = 0.5 - dx * dx - dy * dy - dz * dz - dw * dw;
+            if (attn > 0) {
+                int pxm = xsb & PMASK, pym = ysb & PMASK, pzm = zsb & PMASK, pwm = wsb & PMASK;
+                Grad4 grad = permGrad4[perm[perm[perm[pxm] ^ pym] ^ pzm] ^ pwm];
+                f64 ramped = grad.dx * dx + grad.dy * dy + grad.dz * dz + grad.dw * dw;
+                
+                attn *= attn;
+                value += attn * attn * ramped;
+            }
+            
+            // Maybe this helps the compiler/JVM/LLVM/etc. know we can end the loop here. Maybe not.
+            if (i == 4) break;
+            
+            // Update the relative skewed coordinates to reference the vertex we just added.
+            // Rather, reference its counterpart on the lattice copy that is shifted down by
+            // the vector <-0.2, -0.2, -0.2, -0.2>
+            xsi += c.xsi; ysi += c.ysi; zsi += c.zsi; wsi += c.wsi;
+            ssi += c.ssiDelta;
+            
+            // Next point is the closest vertex on the 4-simplex whose base vertex is the aforementioned vertex.
+            f64 score0 = 1.0 + ssi * (-1.0 / 0.309016994374947); // Seems slightly faster than 1.0-xsi-ysi-zsi-wsi
+            vertexIndex = 0b0000;
+            if (xsi >= ysi && xsi >= zsi && xsi >= wsi && xsi >= score0) {
+                vertexIndex = 0b0001;
+            }
+            else if (ysi > xsi && ysi >= zsi && ysi >= wsi && ysi >= score0) {
+                vertexIndex = 0b0010;
+            }
+            else if (zsi > xsi && zsi > ysi && zsi >= wsi && zsi >= score0) {
+                vertexIndex = 0b0100;
+            }
+            else if (wsi > xsi && wsi > ysi && wsi > zsi && wsi >= score0) {
+                vertexIndex = 0b1000;
+            }
+        }
+        
+        return value;
+    }*/
 }
 
 #[derive(Clone, Copy, Default, Debug)]
