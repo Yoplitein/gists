@@ -1,16 +1,4 @@
-// Port of https://github.com/KdotJPG/OpenSimplex2/blob/master/java/OpenSimplex2F.java @ revision beb35cb70cbf
-
-fn main() {
-    let noise = OpenSimplex2F::new(0i64);
-    
-    // println!("perm:\n\n{:?}\n", &noise.perm.as_slice()[0 .. 100]);
-    // println!("pg2:\n\n{:?}\n", noise.permGrad2);
-    
-    for iv in 0 .. 11 {
-        let v = iv as f64 / 10.0;
-        println!("{:.2} => {:.16}", v, noise.noise2(v, v));
-    }
-}
+// Port of https://github.com/KdotJPG/OpenSimplex2/blob/3c64be93f7fa/java/OpenSimplex2F.java
 
 /*FIXME
  * K.jpg's OpenSimplex 2, faster variant
@@ -247,169 +235,239 @@ impl OpenSimplex2F {
     /*FIXME
      * 4D OpenSimplex2F noise, classic lattice orientation.
      */
-    /*public f64 noise4_Classic(f64 x, f64 y, f64 z, f64 w) {
+    pub fn noise4_Classic(&self, x: f64, y: f64, z: f64, w: f64) -> f64 {
         
         // Get points for A4 lattice
-        f64 s = -0.138196601125011 * (x + y + z + w);
-        f64 xs = x + s, ys = y + s, zs = z + s, ws = w + s;
+        let s = -0.138196601125011 * (x + y + z + w);
+        let xs = x + s;
+        let ys = y + s;
+        let zs = z + s;
+        let ws = w + s;
         
-        return noise4_Base(xs, ys, zs, ws);
-    }*/
+        self.noise4_Base(xs, ys, zs, ws)
+    }
     
     /*FIXME
      * 4D OpenSimplex2F noise, with XY and ZW forming orthogonal triangular-based planes.
      * Recommended for 3D terrain, where X and Y (or Z and W) are horizontal.
      * Recommended for noise(x, y, sin(time), cos(time)) trick.
      */
-    /*public f64 noise4_XYBeforeZW(f64 x, f64 y, f64 z, f64 w) {
+    pub fn noise4_XYBeforeZW(&self, x: f64, y: f64, z: f64, w: f64) -> f64 {
         
-        f64 s2 = (x + y) * -0.178275657951399372 + (z + w) * 0.215623393288842828;
-        f64 t2 = (z + w) * -0.403949762580207112 + (x + y) * -0.375199083010075342;
-        f64 xs = x + s2, ys = y + s2, zs = z + t2, ws = w + t2;
+        let s2 = (x + y) * -0.178275657951399372 + (z + w) * 0.215623393288842828;
+        let t2 = (z + w) * -0.403949762580207112 + (x + y) * -0.375199083010075342;
+        let xs = x + s2;
+        let ys = y + s2;
+        let zs = z + t2;
+        let ws = w + t2;
         
-        return noise4_Base(xs, ys, zs, ws);
-    }*/
+        self.noise4_Base(xs, ys, zs, ws)
+    }
     
     /*FIXME
      * 4D OpenSimplex2F noise, with XZ and YW forming orthogonal triangular-based planes.
      * Recommended for 3D terrain, where X and Z (or Y and W) are horizontal.
      */
-    /*public f64 noise4_XZBeforeYW(f64 x, f64 y, f64 z, f64 w) {
+    pub fn noise4_XZBeforeYW(&self, x: f64, y: f64, z: f64, w: f64) -> f64 {
         
-        f64 s2 = (x + z) * -0.178275657951399372 + (y + w) * 0.215623393288842828;
-        f64 t2 = (y + w) * -0.403949762580207112 + (x + z) * -0.375199083010075342;
-        f64 xs = x + s2, ys = y + t2, zs = z + s2, ws = w + t2;
+        let s2 = (x + z) * -0.178275657951399372 + (y + w) * 0.215623393288842828;
+        let t2 = (y + w) * -0.403949762580207112 + (x + z) * -0.375199083010075342;
+        let xs = x + s2;
+        let ys = y + t2;
+        let zs = z + s2;
+        let ws = w + t2;
         
-        return noise4_Base(xs, ys, zs, ws);
-    }*/
+        self.noise4_Base(xs, ys, zs, ws)
+    }
     
     /*FIXME
      * 4D OpenSimplex2F noise, with XYZ oriented like noise3_Classic,
      * and W for an extra degree of freedom. W repeats eventually.
      * Recommended for time-varied animations which texture a 3D object (W=time)
      */
-    /*public f64 noise4_XYZBeforeW(f64 x, f64 y, f64 z, f64 w) {
+    pub fn noise4_XYZBeforeW(&self, x: f64, y: f64, z: f64, w: f64) -> f64 {
         
-        f64 xyz = x + y + z;
-        f64 ww = w * 0.2236067977499788;
-        f64 s2 = xyz * -0.16666666666666666 + ww;
-        f64 xs = x + s2, ys = y + s2, zs = z + s2, ws = -0.5 * xyz + ww;
+        let xyz = x + y + z;
+        let ww = w * 0.2236067977499788;
+        let s2 = xyz * -0.16666666666666666 + ww;
+        let xs = x + s2;
+        let ys = y + s2;
+        let zs = z + s2;
+        let ws = -0.5 * xyz + ww;
         
-        return noise4_Base(xs, ys, zs, ws);
-    }*/
+        self.noise4_Base(xs, ys, zs, ws)
+    }
     
     /*FIXME
      * 4D OpenSimplex2F noise base.
      * Current implementation not fully optimized by lookup tables.
      * But still comes out slightly ahead of Gustavson's Simplex in tests.
      */
-    /*private f64 noise4_Base(f64 xs, f64 ys, f64 zs, f64 ws) {
-        f64 value = 0;
+    fn noise4_Base(&self, xs: f64, ys: f64, zs: f64, ws: f64) -> f64 {
+        let mut value: f64 = 0.0;
         
         // Get base points and offsets
-        int xsb = fastFloor(xs), ysb = fastFloor(ys), zsb = fastFloor(zs), wsb = fastFloor(ws);
-        f64 xsi = xs - xsb, ysi = ys - ysb, zsi = zs - zsb, wsi = ws - wsb;
+        let mut xsb = f64::floor(xs) as i32;
+        let mut ysb = f64::floor(ys) as i32;
+        let mut zsb = f64::floor(zs) as i32;
+        let mut wsb = f64::floor(ws) as i32;
+        let mut xsi = xs - xsb as f64;
+        let mut ysi = ys - ysb as f64;
+        let mut zsi = zs - zsb as f64;
+        let mut wsi = ws - wsb as f64;
         
         // If we're in the lower half, flip so we can repeat the code for the upper half. We'll flip back later.
-        f64 siSum = xsi + ysi + zsi + wsi;
-        f64 ssi = siSum * 0.309016994374947; // Prep for vertex contributions.
-        boolean inLowerHalf = (siSum < 2);
-        if (inLowerHalf) {
-            xsi = 1 - xsi; ysi = 1 - ysi; zsi = 1 - zsi; wsi = 1 - wsi;
-            siSum = 4 - siSum;
+        let mut siSum = xsi + ysi + zsi + wsi;
+        let mut ssi = siSum * 0.309016994374947; // Prep for vertex contributions.
+        let inLowerHalf = siSum < 2.0;
+        if inLowerHalf {
+            xsi = 1.0 - xsi;
+            ysi = 1.0 - ysi;
+            zsi = 1.0 - zsi;
+            wsi = 1.0 - wsi;
+            siSum = 4.0 - siSum;
         }
         
         // Consider opposing vertex pairs of the octahedron formed by the central cross-section of the stretched tesseract
-        f64 aabb = xsi + ysi - zsi - wsi, abab = xsi - ysi + zsi - wsi, abba = xsi - ysi - zsi + wsi;
-        f64 aabbScore = Math.abs(aabb), ababScore = Math.abs(abab), abbaScore = Math.abs(abba);
+        let aabb = xsi + ysi - zsi - wsi;
+        let abab = xsi - ysi + zsi - wsi;
+        let abba = xsi - ysi - zsi + wsi;
+        let aabbScore = f64::abs(aabb);
+        let ababScore = f64::abs(abab);
+        let abbaScore = f64::abs(abba);
         
         // Find the closest point on the stretched tesseract as if it were the upper half
-        int vertexIndex, via, vib;
-        f64 asi, bsi;
-        if (aabbScore > ababScore && aabbScore > abbaScore) {
-            if (aabb > 0) {
-                asi = zsi; bsi = wsi; vertexIndex = 0b0011; via = 0b0111; vib = 0b1011;
+        let mut vertexIndex: i32;
+        let mut via: i32;
+        let vib: i32;
+        let mut asi: f64;
+        let mut bsi: f64;
+        if aabbScore > ababScore && aabbScore > abbaScore {
+            if aabb > 0.0 {
+                asi = zsi;
+                bsi = wsi;
+                vertexIndex = 0b0011;
+                via = 0b0111;
+                vib = 0b1011;
             } else {
-                asi = xsi; bsi = ysi; vertexIndex = 0b1100; via = 0b1101; vib = 0b1110;
+                asi = xsi;
+                bsi = ysi;
+                vertexIndex = 0b1100;
+                via = 0b1101;
+                vib = 0b1110;
             }
-        } else if (ababScore > abbaScore) {
-            if (abab > 0) {
-                asi = ysi; bsi = wsi; vertexIndex = 0b0101; via = 0b0111; vib = 0b1101;
+        } else if ababScore > abbaScore {
+            if abab > 0.0 {
+                asi = ysi;
+                bsi = wsi;
+                vertexIndex = 0b0101;
+                via = 0b0111;
+                vib = 0b1101;
             } else {
-                asi = xsi; bsi = zsi; vertexIndex = 0b1010; via = 0b1011; vib = 0b1110;
+                asi = xsi;
+                bsi = zsi;
+                vertexIndex = 0b1010;
+                via = 0b1011;
+                vib = 0b1110;
             }
         } else {
-            if (abba > 0) {
-                asi = ysi; bsi = zsi; vertexIndex = 0b1001; via = 0b1011; vib = 0b1101;
+            if abba > 0.0 {
+                asi = ysi;
+                bsi = zsi;
+                vertexIndex = 0b1001;
+                via = 0b1011;
+                vib = 0b1101;
             } else {
-                asi = xsi; bsi = wsi; vertexIndex = 0b0110; via = 0b0111; vib = 0b1110;
+                asi = xsi;
+                bsi = wsi;
+                vertexIndex = 0b0110;
+                via = 0b0111;
+                vib = 0b1110;
             }
         }
-        if (bsi > asi) {
+        if bsi > asi {
             via = vib;
-            f64 temp = bsi;
-            bsi = asi;
-            asi = temp;
+            std::mem::swap(&mut asi, &mut bsi);
         }
-        if (siSum + asi > 3) {
+        if siSum + asi > 3.0 {
             vertexIndex = via;
-            if (siSum + bsi > 4) {
+            if siSum + bsi > 4.0 {
                 vertexIndex = 0b1111;
             }
         }
         
         // Now flip back if we're actually in the lower half.
-        if (inLowerHalf) {
-            xsi = 1 - xsi; ysi = 1 - ysi; zsi = 1 - zsi; wsi = 1 - wsi;
+        if inLowerHalf {
+            xsi = 1.0 - xsi;
+            ysi = 1.0 - ysi;
+            zsi = 1.0 - zsi;
+            wsi = 1.0 - wsi;
             vertexIndex ^= 0b1111;
         }
         
+        let staticData = get_static_data();
+        
         // Five points to add, total, from five copies of the A4 lattice.
-        for (int i = 0; i < 5; i++) {
+        for i in 0 .. 5 {
         
             // Update xsb/etc. and add the lattice point's contribution.
-            LatticePoint4D c = VERTICES_4D[vertexIndex];
-            xsb += c.xsv; ysb += c.ysv; zsb += c.zsv; wsb += c.wsv;
-            f64 xi = xsi + ssi, yi = ysi + ssi, zi = zsi + ssi, wi = wsi + ssi;
-            f64 dx = xi + c.dx, dy = yi + c.dy, dz = zi + c.dz, dw = wi + c.dw;
-            f64 attn = 0.5 - dx * dx - dy * dy - dz * dz - dw * dw;
-            if (attn > 0) {
-                int pxm = xsb & PMASK, pym = ysb & PMASK, pzm = zsb & PMASK, pwm = wsb & PMASK;
-                Grad4 grad = permGrad4[perm[perm[perm[pxm] ^ pym] ^ pzm] ^ pwm];
-                f64 ramped = grad.dx * dx + grad.dy * dy + grad.dz * dz + grad.dw * dw;
+            let c = staticData.vertices_4d[vertexIndex as usize];
+            xsb += c.xsv;
+            ysb += c.ysv;
+            zsb += c.zsv;
+            wsb += c.wsv;
+            let xi = xsi + ssi;
+            let yi = ysi + ssi;
+            let zi = zsi + ssi;
+            let wi = wsi + ssi;
+            let dx = xi + c.dx;
+            let dy = yi + c.dy;
+            let dz = zi + c.dz;
+            let dw = wi + c.dw;
+            let attn = 0.5 - dx * dx - dy * dy - dz * dz - dw * dw;
+            if attn > 0.0 {
+                let pxm = xsb & PMASK;
+                let pym = ysb & PMASK;
+                let pzm = zsb & PMASK;
+                let pwm = wsb & PMASK;
+                let grad = self.permGrad4[(self.perm[(self.perm[(self.perm[pxm as usize] ^ pym as i16) as usize] ^ pzm as i16) as usize] ^ pwm as i16) as usize];
+                let ramped = grad.dx * dx + grad.dy * dy + grad.dz * dz + grad.dw * dw;
                 
-                attn *= attn;
+                let attn = attn * attn;
                 value += attn * attn * ramped;
             }
             
             // Maybe this helps the compiler/JVM/LLVM/etc. know we can end the loop here. Maybe not.
-            if (i == 4) break;
+            if i == 4 { break; }
             
             // Update the relative skewed coordinates to reference the vertex we just added.
             // Rather, reference its counterpart on the lattice copy that is shifted down by
             // the vector <-0.2, -0.2, -0.2, -0.2>
-            xsi += c.xsi; ysi += c.ysi; zsi += c.zsi; wsi += c.wsi;
+            xsi += c.xsi;
+            ysi += c.ysi;
+            zsi += c.zsi;
+            wsi += c.wsi;
             ssi += c.ssiDelta;
             
             // Next point is the closest vertex on the 4-simplex whose base vertex is the aforementioned vertex.
-            f64 score0 = 1.0 + ssi * (-1.0 / 0.309016994374947); // Seems slightly faster than 1.0-xsi-ysi-zsi-wsi
+            let score0 = 1.0 + ssi * (-1.0 / 0.309016994374947); // Seems slightly faster than 1.0-xsi-ysi-zsi-wsi
             vertexIndex = 0b0000;
-            if (xsi >= ysi && xsi >= zsi && xsi >= wsi && xsi >= score0) {
+            if xsi >= ysi && xsi >= zsi && xsi >= wsi && xsi >= score0 {
                 vertexIndex = 0b0001;
             }
-            else if (ysi > xsi && ysi >= zsi && ysi >= wsi && ysi >= score0) {
+            else if ysi > xsi && ysi >= zsi && ysi >= wsi && ysi >= score0 {
                 vertexIndex = 0b0010;
             }
-            else if (zsi > xsi && zsi > ysi && zsi >= wsi && zsi >= score0) {
+            else if zsi > xsi && zsi > ysi && zsi >= wsi && zsi >= score0 {
                 vertexIndex = 0b0100;
             }
-            else if (wsi > xsi && wsi > ysi && wsi > zsi && wsi >= score0) {
+            else if wsi > xsi && wsi > ysi && wsi > zsi && wsi >= score0 {
                 vertexIndex = 0b1000;
             }
         }
         
-        return value;
-    }*/
+        value
+    }
 }
 
 #[derive(Clone, Copy, Default, Debug)]
