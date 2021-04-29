@@ -24,6 +24,7 @@ fn main() {
  * Multiple versions of each function are provided. See the
  * documentation above each, for more info.
  */
+#[derive(Clone)]
 pub struct OpenSimplex2F {
     perm: Vec<i16>,
     permGrad2: Vec<Grad2>,
@@ -76,14 +77,14 @@ impl OpenSimplex2F {
      * Might be better for a 2D sandbox style game, where Y is vertical.
      * Probably slightly less optimal for heightmaps or continent maps.
      */
-    /* public f64 noise2_XBeforeY(f64 x, f64 y) {
+    pub fn noise2_XBeforeY(&self, x: f64, y: f64) -> f64 {
         
         // Skew transform and rotation baked into one.
-        f64 xx = x * 0.7071067811865476;
-        f64 yy = y * 1.224744871380249;
+        let xx = x * 0.7071067811865476;
+        let yy = y * 1.224744871380249;
         
-        return noise2_Base(yy + xx, yy - xx);
-    } */
+        self.noise2_Base(yy + xx, yy - xx)
+    }
     
     /*FIXME
      * 2D Simplex noise base.
@@ -124,7 +125,7 @@ impl OpenSimplex2F {
             value += attn * attn * extrapolation;
         }
         
-        return value;
+        value
     }
     
     /*FIXME
@@ -132,17 +133,19 @@ impl OpenSimplex2F {
      * Proper substitute for 3D Simplex in light of Forbidden Formulae.
      * Use noise3_XYBeforeZ or noise3_XZBeforeY instead, wherever appropriate.
      */
-    /*public f64 noise3_Classic(f64 x, f64 y, f64 z) {
+    pub fn noise3_Classic(&self, x: f64, y: f64, z: f64) -> f64 {
         
         // Re-orient the cubic lattices via rotation, to produce the expected look on cardinal planar slices.
         // If texturing objects that don't tend to have cardinal plane faces, you could even remove this.
         // Orthonormal rotation. Not a skew transform.
-        f64 r = (2.0 / 3.0) * (x + y + z);
-        f64 xr = r - x, yr = r - y, zr = r - z;
+        let r = (2.0 / 3.0) * (x + y + z);
+        let xr = r - x;
+        let yr = r - y;
+        let zr = r - z;
         
         // Evaluate both lattices to form a BCC lattice.
-        return noise3_BCC(xr, yr, zr);
-    }*/
+        self.noise3_BCC(xr, yr, zr)
+    }
     
     /*FIXME
      * 3D Re-oriented 4-point BCC noise, with better visual isotropy in (X, Y).
@@ -152,19 +155,20 @@ impl OpenSimplex2F {
      * If Z is vertical in world coordinates, call noise3_XYBeforeZ(x, y, Z).
      * For a time varied animation, call noise3_XYBeforeZ(x, y, T).
      */
-    /*public f64 noise3_XYBeforeZ(f64 x, f64 y, f64 z) {
+    pub fn noise3_XYBeforeZ(&self, x: f64, y: f64, z: f64) -> f64 {
         
         // Re-orient the cubic lattices without skewing, to make X and Y triangular like 2D.
         // Orthonormal rotation. Not a skew transform.
-        f64 xy = x + y;
-        f64 s2 = xy * -0.211324865405187;
-        f64 zz = z * 0.577350269189626;
-        f64 xr = x + s2 - zz, yr = y + s2 - zz;
-        f64 zr = xy * 0.577350269189626 + zz;
+        let xy = x + y;
+        let s2 = xy * -0.211324865405187;
+        let zz = z * 0.577350269189626;
+        let xr = x + s2 - zz;
+        let yr = y + s2 - zz;
+        let zr = xy * 0.577350269189626 + zz;
         
         // Evaluate both lattices to form a BCC lattice.
-        return noise3_BCC(xr, yr, zr);
-    }*/
+        self.noise3_BCC(xr, yr, zr)
+    }
     
     /*FIXME
      * 3D Re-oriented 4-point BCC noise, with better visual isotropy in (X, Z).
@@ -174,19 +178,20 @@ impl OpenSimplex2F {
      * If Z is vertical in world coordinates, call noise3_XZBeforeY(x, Z, y) or use noise3_XYBeforeZ.
      * For a time varied animation, call noise3_XZBeforeY(x, T, y) or use noise3_XYBeforeZ.
      */
-    /*public f64 noise3_XZBeforeY(f64 x, f64 y, f64 z) {
+    pub fn noise3_XZBeforeY(&self, x: f64, y: f64, z: f64) -> f64 {
         
         // Re-orient the cubic lattices without skewing, to make X and Z triangular like 2D.
         // Orthonormal rotation. Not a skew transform.
-        f64 xz = x + z;
-        f64 s2 = xz * -0.211324865405187;
-        f64 yy = y * 0.577350269189626;
-        f64 xr = x + s2 - yy; f64 zr = z + s2 - yy;
-        f64 yr = xz * 0.577350269189626 + yy;
+        let xz = x + z;
+        let s2 = xz * -0.211324865405187;
+        let yy = y * 0.577350269189626;
+        let xr = x + s2 - yy;
+        let zr = z + s2 - yy;
+        let yr = xz * 0.577350269189626 + yy;
         
         // Evaluate both lattices to form a BCC lattice.
-        return noise3_BCC(xr, yr, zr);
-    }*/
+        self.noise3_BCC(xr, yr, zr)
+    }
     
     /*FIXME
      * Generate overlapping cubic lattices for 3D Re-oriented BCC noise.
@@ -194,37 +199,50 @@ impl OpenSimplex2F {
      * It was actually faster to narrow down the points in the loop itself,
      * than to build up the index with enough info to isolate 4 points.
      */
-    /*private f64 noise3_BCC(f64 xr, f64 yr, f64 zr) {
+    fn noise3_BCC(&self, xr: f64, yr: f64, zr: f64) -> f64 {
         
         // Get base and offsets inside cube of first lattice.
-        int xrb = fastFloor(xr), yrb = fastFloor(yr), zrb = fastFloor(zr);
-        f64 xri = xr - xrb, yri = yr - yrb, zri = zr - zrb;
+        let xrb: i32 = f64::floor(xr) as i32;
+        let yrb: i32 = f64::floor(yr) as i32;
+        let zrb: i32 = f64::floor(zr) as i32;
+        let xri: f64 = xr - xrb as f64;
+        let yri: f64 = yr - yrb as f64;
+        let zri: f64 = zr - zrb as f64;
         
         // Identify which octant of the cube we're in. This determines which cell
         // in the other cubic lattice we're in, and also narrows down one point on each.
-        int xht = (int)(xri + 0.5), yht = (int)(yri + 0.5), zht = (int)(zri + 0.5);
-        int index = (xht << 0) | (yht << 1) | (zht << 2);
+        let xht: i32 = (xri + 0.5) as i32;
+        let yht: i32 = (yri + 0.5) as i32;
+        let zht: i32 = (zri + 0.5) as i32;
+        let index = ((xht << 0) | (yht << 1) | (zht << 2)) as usize;
+        let staticData = get_static_data();
         
         // Point contributions
-        f64 value = 0;
-        LatticePoint3D c = LOOKUP_3D[index];
-        while (c != null) {
-            f64 dxr = xri + c.dxr, dyr = yri + c.dyr, dzr = zri + c.dzr;
-            f64 attn = 0.5 - dxr * dxr - dyr * dyr - dzr * dzr;
-            if (attn < 0) {
-                c = c.nextOnFailure;
+        let mut value = 0.0;
+        let mut curr: Option<LatticePoint3D> = Some(staticData.lookup_3d[index].clone());
+        while curr.is_some() {
+            let c = curr.unwrap();
+            let dxr = xri + c.dxr;
+            let dyr = yri + c.dyr;
+            let dzr = zri + c.dzr;
+            let attn = 0.5 - dxr * dxr - dyr * dyr - dzr * dzr;
+            if attn < 0.0 {
+                curr = c.nextOnFailure.map(|v| *v);
             } else {
-                int pxm = (xrb + c.xrv) & PMASK, pym = (yrb + c.yrv) & PMASK, pzm = (zrb + c.zrv) & PMASK;
-                Grad3 grad = permGrad3[perm[perm[pxm] ^ pym] ^ pzm];
-                f64 extrapolation = grad.dx * dxr + grad.dy * dyr + grad.dz * dzr;
+                let pxm = ((xrb + c.xrv) & PMASK) as i16;
+                let pym = ((yrb + c.yrv) & PMASK) as i16;
+                let pzm = ((zrb + c.zrv) & PMASK) as i16;
+                let grad = self.permGrad3[(self.perm[(self.perm[pxm as usize] ^ pym) as usize] ^ pzm) as usize];
+                let extrapolation = grad.dx * dxr + grad.dy * dyr + grad.dz * dzr;
                 
-                attn *= attn;
+                let attn = attn * attn;
                 value += attn * attn * extrapolation;
-                c = c.nextOnSuccess;
+                curr = c.nextOnSuccess.map(|v| *v);
             }
         }
-        return value;
-    }*/
+        
+        value
+    }
     
     /*FIXME
      * 4D OpenSimplex2F noise, classic lattice orientation.
@@ -460,21 +478,21 @@ struct LatticePoint3D {
     xrv: i32,
     yrv: i32,
     zrv: i32,
-    nextOnFailure: Option<Box<LatticePoint3D>>,
+    nextOnFailure: Option<Box<LatticePoint3D>>, // *facepalm*
     nextOnSuccess: Option<Box<LatticePoint3D>>,
 }
 
 impl LatticePoint3D {
     fn new(xrv: i32, yrv: i32, zrv: i32, lattice: i32) -> Self {
         Self {
-            dxr: (-xrv + lattice) as f64 * 0.5,
-            dyr: (-yrv + lattice) as f64 * 0.5,
-            dzr: (-zrv + lattice) as f64 * 0.5,
+            dxr: (-xrv as f64) + lattice as f64 * 0.5,
+            dyr: (-yrv as f64) + lattice as f64 * 0.5,
+            dzr: (-zrv as f64) + lattice as f64 * 0.5,
             xrv: xrv + lattice * 1024,
             yrv: yrv + lattice * 1024,
             zrv: zrv + lattice * 1024,
-            nextOnFailure: Default::default(),
-            nextOnSuccess: Default::default(),
+            nextOnFailure: None,
+            nextOnSuccess: None,
         }
     }
 }
@@ -534,49 +552,46 @@ unsafe fn init_lattice_points() {
     LOOKUP_3D = vec![Default::default(); 8];
     
     for i in 0 .. LOOKUP_3D.len() as i32 {
-        let i1 = (i >> 0) & 1;
-        let j1 = (i >> 1) & 1;
-        let k1 = (i >> 2) & 1;
-        let i2 = i1 ^ 1;
-        let j2 = j1 ^ 1;
-        let k2 = k1 ^ 1;
+        let i1: i32 = (i >> 0) & 1;
+        let j1: i32 = (i >> 1) & 1;
+        let k1: i32 = (i >> 2) & 1;
+        let i2: i32 = i1 ^ 1;
+        let j2: i32 = j1 ^ 1;
+        let k2: i32 = k1 ^ 1;
         
         // The two points within this octant, one from each of the two cubic half-lattices.
         let mut c0: LatticePoint3D = LatticePoint3D::new(i1, j1, k1, 0);
-        let mut c1: LatticePoint3D = LatticePoint3D::new(i1 + i2, j1 + j2, k1 + k2, 1);
+        let mut c1: Box<LatticePoint3D> = Box::new(LatticePoint3D::new(i1 + i2, j1 + j2, k1 + k2, 1));
         
         // Each single step away on the first half-lattice.
-        let mut c2: LatticePoint3D = LatticePoint3D::new(i1 ^ 1, j1, k1, 0);
-        let mut c3: LatticePoint3D = LatticePoint3D::new(i1, j1 ^ 1, k1, 0);
-        let mut c4: LatticePoint3D = LatticePoint3D::new(i1, j1, k1 ^ 1, 0);
+        let mut c2: Box<LatticePoint3D> = Box::new(LatticePoint3D::new(i1 ^ 1, j1, k1, 0));
+        let mut c3: Box<LatticePoint3D> = Box::new(LatticePoint3D::new(i1, j1 ^ 1, k1, 0));
+        let mut c4: Box<LatticePoint3D> = Box::new(LatticePoint3D::new(i1, j1, k1 ^ 1, 0));
         
         // Each single step away on the second half-lattice.
-        let mut c5: LatticePoint3D = LatticePoint3D::new(i1 + (i2 ^ 1), j1 + j2, k1 + k2, 1);
-        let mut c6: LatticePoint3D = LatticePoint3D::new(i1 + i2, j1 + (j2 ^ 1), k1 + k2, 1);
-        let mut c7: LatticePoint3D = LatticePoint3D::new(i1 + i2, j1 + j2, k1 + (k2 ^ 1), 1);
+        let mut c5: Box<LatticePoint3D> = Box::new(LatticePoint3D::new(i1 + (i2 ^ 1), j1 + j2, k1 + k2, 1));
+        let mut c6: Box<LatticePoint3D> = Box::new(LatticePoint3D::new(i1 + i2, j1 + (j2 ^ 1), k1 + k2, 1));
+        let c7: Box<LatticePoint3D> = Box::new(LatticePoint3D::new(i1 + i2, j1 + j2, k1 + (k2 ^ 1), 1));
         
-        // First two are guaranteed.
-        c0.nextOnFailure = Some(Box::new(c1.clone()));
-        c0.nextOnSuccess = c0.nextOnFailure.clone();
-        c1.nextOnFailure = Some(Box::new(c2.clone()));
-        c1.nextOnSuccess = c1.nextOnFailure.clone();
+        // porting note: reversed to work with cloning
+        c6.nextOnFailure = Some(c7.clone());
         
-        // Once we find one on the first half-lattice, the rest are out.
-        // In addition, knowing c2 rules out c5.
-        c2.nextOnFailure = Some(Box::new(c3.clone()));
-        c2.nextOnSuccess = Some(Box::new(c6.clone()));
-        c3.nextOnFailure = Some(Box::new(c4.clone()));
-        c3.nextOnSuccess = Some(Box::new(c5.clone()));
-        c4.nextOnFailure = Some(Box::new(c5.clone()));
-        c4.nextOnSuccess = c4.nextOnFailure.clone();
+        c5.nextOnFailure = Some(c6.clone());
         
-        // Once we find one on the second half-lattice, the rest are out.
-        c5.nextOnFailure = Some(Box::new(c6.clone()));
-        c5.nextOnSuccess = None;
-        c6.nextOnFailure = Some(Box::new(c7.clone()));
-        c6.nextOnSuccess = None;
-        c7.nextOnFailure = None;
-        c7.nextOnSuccess = c7.nextOnFailure.clone();
+        c4.nextOnFailure = Some(c5.clone());
+        c4.nextOnSuccess = Some(c5.clone());
+        
+        c3.nextOnFailure = Some(c4.clone());
+        c3.nextOnSuccess = Some(c5.clone());
+        
+        c2.nextOnFailure = Some(c3.clone());
+        c2.nextOnSuccess = Some(c6.clone());
+        
+        c1.nextOnFailure = Some(c2.clone());
+        c1.nextOnSuccess = Some(c2.clone());
+        
+        c0.nextOnFailure = Some(c1.clone());
+        c0.nextOnSuccess = Some(c1.clone());
         
         LOOKUP_3D[i as usize] = c0;
     }
