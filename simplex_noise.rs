@@ -1,6 +1,6 @@
 // Port of https://github.com/KdotJPG/OpenSimplex2/blob/3c64be93f7fa/java/OpenSimplex2F.java
 
-/*FIXME
+/**
  * K.jpg's OpenSimplex 2, faster variant
  *
  * - 2D is standard simplex implemented using a lookup table.
@@ -21,6 +21,9 @@ pub struct OpenSimplex2F {
 }
 
 impl OpenSimplex2F {
+    /**
+     * Construct a new instance with the given seed.
+     */
     pub fn new(mut seed: i64) -> Self {
         let mut perm = vec![Default::default(); PSIZE as usize];
         let mut permGrad2 = vec![Default::default(); PSIZE as usize];
@@ -47,7 +50,7 @@ impl OpenSimplex2F {
      * Noise Evaluators
      */
     
-    /*FIXME
+    /**
      * 2D Simplex noise, standard lattice orientation.
      */
     pub fn noise2(&self, x: f64, y: f64) -> f64 {
@@ -60,7 +63,7 @@ impl OpenSimplex2F {
         self.noise2_Base(xs, ys)
     }
     
-    /*FIXME
+    /**
      * 2D Simplex noise, with Y pointing down the main diagonal.
      * Might be better for a 2D sandbox style game, where Y is vertical.
      * Probably slightly less optimal for heightmaps or continent maps.
@@ -74,7 +77,7 @@ impl OpenSimplex2F {
         self.noise2_Base(yy + xx, yy - xx)
     }
     
-    /*FIXME
+    /*
      * 2D Simplex noise base.
      * Lookup table implementation inspired by DigitalShadow.
      */
@@ -116,7 +119,7 @@ impl OpenSimplex2F {
         value
     }
     
-    /*FIXME
+    /**
      * 3D Re-oriented 4-point BCC noise, classic orientation.
      * Proper substitute for 3D Simplex in light of Forbidden Formulae.
      * Use noise3_XYBeforeZ or noise3_XZBeforeY instead, wherever appropriate.
@@ -135,7 +138,7 @@ impl OpenSimplex2F {
         self.noise3_BCC(xr, yr, zr)
     }
     
-    /*FIXME
+    /**
      * 3D Re-oriented 4-point BCC noise, with better visual isotropy in (X, Y).
      * Recommended for 3D terrain and time-varied animations.
      * The Z coordinate should always be the "different" coordinate in your use case.
@@ -158,7 +161,7 @@ impl OpenSimplex2F {
         self.noise3_BCC(xr, yr, zr)
     }
     
-    /*FIXME
+    /**
      * 3D Re-oriented 4-point BCC noise, with better visual isotropy in (X, Z).
      * Recommended for 3D terrain and time-varied animations.
      * The Y coordinate should always be the "different" coordinate in your use case.
@@ -181,7 +184,7 @@ impl OpenSimplex2F {
         self.noise3_BCC(xr, yr, zr)
     }
     
-    /*FIXME
+    /*
      * Generate overlapping cubic lattices for 3D Re-oriented BCC noise.
      * Lookup table implementation inspired by DigitalShadow.
      * It was actually faster to narrow down the points in the loop itself,
@@ -232,7 +235,7 @@ impl OpenSimplex2F {
         value
     }
     
-    /*FIXME
+    /**
      * 4D OpenSimplex2F noise, classic lattice orientation.
      */
     pub fn noise4_Classic(&self, x: f64, y: f64, z: f64, w: f64) -> f64 {
@@ -247,7 +250,7 @@ impl OpenSimplex2F {
         self.noise4_Base(xs, ys, zs, ws)
     }
     
-    /*FIXME
+    /**
      * 4D OpenSimplex2F noise, with XY and ZW forming orthogonal triangular-based planes.
      * Recommended for 3D terrain, where X and Y (or Z and W) are horizontal.
      * Recommended for noise(x, y, sin(time), cos(time)) trick.
@@ -264,7 +267,7 @@ impl OpenSimplex2F {
         self.noise4_Base(xs, ys, zs, ws)
     }
     
-    /*FIXME
+    /**
      * 4D OpenSimplex2F noise, with XZ and YW forming orthogonal triangular-based planes.
      * Recommended for 3D terrain, where X and Z (or Y and W) are horizontal.
      */
@@ -280,7 +283,7 @@ impl OpenSimplex2F {
         self.noise4_Base(xs, ys, zs, ws)
     }
     
-    /*FIXME
+    /**
      * 4D OpenSimplex2F noise, with XYZ oriented like noise3_Classic,
      * and W for an extra degree of freedom. W repeats eventually.
      * Recommended for time-varied animations which texture a 3D object (W=time)
@@ -298,7 +301,7 @@ impl OpenSimplex2F {
         self.noise4_Base(xs, ys, zs, ws)
     }
     
-    /*FIXME
+    /*
      * 4D OpenSimplex2F noise base.
      * Current implementation not fully optimized by lookup tables.
      * But still comes out slightly ahead of Gustavson's Simplex in tests.
