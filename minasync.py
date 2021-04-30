@@ -38,7 +38,7 @@ def run_loop(stopWhenDone = False):
     "Run the event loop indefinitely."
 
     while True:
-        _, done = step_loop(True)
+        sleepTime, done = step_loop(True)
         
         if stopWhenDone and done:
             break
@@ -50,13 +50,6 @@ def step_loop(blocking = False):
     
     def reverse_iter(what):
         return reversed(list(enumerate(what)))
-    
-    def returnval(sleepTime):
-        return (
-            ((_now + sleepTime) - time.time()) # the amount of time calling code should sleep when blocking = False
-                if sleepTime > 0 else 0,
-            not any(len(v) > 0 for v in [_transient_callbacks, _timed_callbacks, _blocked_callbacks])
-        )
     
     _now = time.time()
     
@@ -70,13 +63,12 @@ def step_loop(blocking = False):
     for _ in range(len(_transient_callbacks)): # current callbacks may queue subsequent callbacks
         _transient_callbacks.popleft()()
     
-    _now = time.time() # just in case the above took unusually long
+    ## step 3: poll which file descriptors are ready; sleeping if requested, and there are none
+    _now = time.time() # just in case transients took unusually long (e.g. computation-heavy tasks)
     maxSleepTime = ( # the shortest duration the application should sleep for before any timers need to be dispatched
         max(0, min(pair[0] for pair in _timed_callbacks) - _now)
             if len(_timed_callbacks) > 0 else -1
     )
-    
-    ## step 3: poll which file descriptors are ready; sleeping if requested, and there are none
     readySet = {pair[0]:pair[1] for pair in _poll.poll(maxSleepTime if blocking else 0)}
     
     ## step 4: wake any waiting tasks if their fds are ready
@@ -90,7 +82,11 @@ def step_loop(blocking = False):
             cb()
             _blocked_callbacks.pop(index)
     
-    return returnval(maxSleepTime)
+    return (
+        ((_now + maxSleepTime) - time.time()) # the amount of time calling code should sleep when blocking = False
+            if maxSleepTime > 0 else 0,
+        not any(len(v) > 0 for v in [_transient_callbacks, _timed_callbacks, _blocked_callbacks]) # whether any tasks are still scheduled, i.e. if the application is done
+    )
 
 def call_soon(fn, *args, **kwargs):
     "Schedule the given function to run immediately on the next iteration of the event loop."
