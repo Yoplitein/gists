@@ -2,13 +2,13 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex, atomic::{AtomicBool, Ordering}};
 use std::thread::{JoinHandle, spawn};
 
-struct WorkQueue<T> {
-    data: Arc<(Mutex<VecDeque<T>>, Condvar)>,
+struct WorkQueue {
+    data: Arc<(Mutex<VecDeque<Arc<WorkFn>>>, Condvar)>,
     workers: Vec<Option<JoinHandle<()>>>,
     shutdown: Arc<AtomicBool>,
 }
 
-impl<T> WorkQueue<T> where T: Send + FnOnce() -> () + 'static {
+impl WorkQueue {
     pub fn new(numWorkers: usize) -> Self {
         let data = Arc::new((Mutex::new(vec![].into()), Condvar::new()));
         let mut workers = Vec::with_capacity(numWorkers);
@@ -23,14 +23,14 @@ impl<T> WorkQueue<T> where T: Send + FnOnce() -> () + 'static {
         Self { data, workers, shutdown }
     }
     
-    pub fn submit(&self, func: T) {
+    pub fn submit<T: FnOnce() + 'static + Send + Sync>(&self, func: T) {
         let mut vec = self.data.0.lock().unwrap();
-        vec.push_back(func);
+        vec.push_back(Arc::new(Box::new(func)));
         drop(vec);
         self.data.1.notify_one();
     }
     
-    pub fn shutdown(&mut self) {
+    pub fn shutdown(mut self) {
         self.shutdown.store(true, Ordering::Release);
         
         // notify all with the lock held to ensure every worker is either running tasks,
@@ -44,7 +44,7 @@ impl<T> WorkQueue<T> where T: Send + FnOnce() -> () + 'static {
         }
     }
     
-    fn worker(data: Arc<(Mutex<VecDeque<T>>, Condvar)>, shutdown: Arc<AtomicBool>) {
+    fn worker(data: Arc<(Mutex<VecDeque<Arc<WorkFn>>>, Condvar)>, shutdown: Arc<AtomicBool>) {
         loop {
             let mut tasks = data.0.lock().unwrap();
             while tasks.len() == 0 {
@@ -52,8 +52,12 @@ impl<T> WorkQueue<T> where T: Send + FnOnce() -> () + 'static {
                 tasks = data.1.wait(tasks).unwrap();
             }
             
-            let func = tasks.pop_front().unwrap();
+            let arc = tasks.pop_front().unwrap();
             drop(tasks); // don't hold lock while running task
+            let func = match Arc::try_unwrap(arc) {
+                Ok(v) => v,
+                Err(_) => panic!("could not unwrap inner arc"),
+            };
             func();
         }
     }
