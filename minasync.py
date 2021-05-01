@@ -36,7 +36,7 @@ def _wait_writable(fd):
     _set_poll(fd, False, False)
 
 def _set_poll(fd, read = False, write = False):
-    _poll.modify(fd, select.EPOLLERR | select.EPOLLHUP | (select.EPOLLIN if read else 0) | (select.EPOLLOUT if write else 0))
+    _poll.modify(fd, 0 if not (read or write) else select.EPOLLERR | select.EPOLLHUP | (select.EPOLLIN if read else 0) | (select.EPOLLOUT if write else 0))
 
 def run_loop(stopWhenDone = False):
     "Run the event loop indefinitely."
@@ -138,8 +138,8 @@ def spawn_task(coro):
             res = coro.send(None) # call back into the coroutine, getting whatever was yielded this time
         except StopIteration:
             return # coroutine exited normally
-        except (BrokenPipeError, ConnectionError, RuntimeError):
-            print(f"Warning: task {id(coro)} terminated with {err}", file=sys.stderr)
+        except (BrokenPipeError, ConnectionError, RuntimeError) as err:
+            print(f"Warning: task {id(coro)} terminated with {err!r}", file=sys.stderr)
             return
         
         if res is None: # special case for sleep, also handy generally to return to the event loop during expensive computation in a coro (preventing starvation)
