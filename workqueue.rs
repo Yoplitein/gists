@@ -2,6 +2,8 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex, atomic::{AtomicBool, Ordering}};
 use std::thread::{JoinHandle, spawn};
 
+type WorkFn = Box<dyn FnOnce() + Send + Sync>;
+
 struct WorkQueue {
     data: Arc<(Mutex<VecDeque<Arc<WorkFn>>>, Condvar)>,
     workers: Vec<Option<JoinHandle<()>>>,
