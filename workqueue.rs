@@ -5,31 +5,31 @@ use std::thread::{JoinHandle, spawn};
 type WorkFn = Box<dyn FnOnce() + Send + Sync>;
 
 struct WorkQueue {
-    data: Arc<(Mutex<VecDeque<Arc<WorkFn>>>, Condvar)>,
+    tasks: Arc<(Mutex<VecDeque<Arc<WorkFn>>>, Condvar)>,
     workers: Vec<Option<JoinHandle<()>>>,
     shutdown: Arc<AtomicBool>,
 }
 
 impl WorkQueue {
     pub fn new(numWorkers: usize) -> Self {
-        let data = Arc::new((Mutex::new(vec![].into()), Condvar::new()));
+        let tasks = Arc::new((Mutex::new(vec![].into()), Condvar::new()));
         let mut workers = Vec::with_capacity(numWorkers);
         let shutdown = Arc::new(AtomicBool::new(false));
         
         for _ in 0 .. numWorkers {
-            let data = Arc::clone(&data);
+            let tasks = Arc::clone(&tasks);
             let shutdown = shutdown.clone();
-            workers.push(Some(spawn(move || Self::worker(data, shutdown))));
+            workers.push(Some(spawn(move || Self::worker(tasks, shutdown))));
         }
         
-        Self { data, workers, shutdown }
+        Self { tasks, workers, shutdown }
     }
     
-    pub fn submit<T: FnOnce() + 'static + Send + Sync>(&self, func: T) {
-        let mut vec = self.data.0.lock().unwrap();
+    pub fn submit(&self, func: impl FnOnce() + 'static + Send + Sync) {
+        let mut vec = self.tasks.0.lock().unwrap();
         vec.push_back(Arc::new(Box::new(func)));
         drop(vec);
-        self.data.1.notify_one();
+        self.tasks.1.notify_one();
     }
     
     pub fn shutdown(mut self) {
@@ -37,8 +37,8 @@ impl WorkQueue {
         
         // notify all with the lock held to ensure every worker is either running tasks,
         // or waiting on the condvar; i.e. not between checking shutdown and the call to wait
-        let lock = self.data.0.lock().unwrap();
-        self.data.1.notify_all();
+        let lock = self.tasks.0.lock().unwrap();
+        self.tasks.1.notify_all();
         drop(lock);
         
         for handle in &mut self.workers {
@@ -46,12 +46,12 @@ impl WorkQueue {
         }
     }
     
-    fn worker(data: Arc<(Mutex<VecDeque<Arc<WorkFn>>>, Condvar)>, shutdown: Arc<AtomicBool>) {
+    fn worker(tasksData: Arc<(Mutex<VecDeque<Arc<WorkFn>>>, Condvar)>, shutdown: Arc<AtomicBool>) {
         loop {
-            let mut tasks = data.0.lock().unwrap();
+            let mut tasks = tasksData.0.lock().unwrap();
             while tasks.len() == 0 {
                 if shutdown.load(Ordering::Acquire) { return; }
-                tasks = data.1.wait(tasks).unwrap();
+                tasks = tasksData.1.wait(tasks).unwrap();
             }
             
             let arc = tasks.pop_front().unwrap();
