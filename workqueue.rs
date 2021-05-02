@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::marker::PhantomData;
 use std::sync::{Arc, Condvar, Mutex, atomic::{AtomicBool, AtomicUsize, Ordering}};
 use std::thread::{JoinHandle, spawn};
 
@@ -35,7 +36,7 @@ impl WorkQueue {
         self.tasks.1.notify_one();
     }
     
-    pub fn submit_scoped(&self, func: impl FnOnce() + Send + Sync) -> ScopedTask {
+    pub fn submit_scoped<'a>(&self, func: impl FnOnce() + 'a + Send + Sync) -> ScopedTask<'a> {
         let done = Arc::new((AtomicBool::new(false), Condvar::new()));
         let wrapper = {
             let done = Arc::clone(&done);
@@ -49,7 +50,7 @@ impl WorkQueue {
         let staticWrapper = unsafe { std::mem::transmute::<Box<dyn FnOnce() + Send + Sync>, Box<dyn FnOnce() + 'static + Send + Sync>>(wrapper) };
         
         self.submit(staticWrapper);
-        ScopedTask { tasks: Arc::clone(&self.tasks), done }
+        ScopedTask { tasks: Arc::clone(&self.tasks), done, phantom: PhantomData }
     }
     
     pub fn wait_done(&self) {
@@ -83,25 +84,29 @@ impl WorkQueue {
             }
             
             runningCounter.0.fetch_add(1, Ordering::AcqRel);
+            
             let arc = tasks.pop_front().unwrap();
             drop(tasks); // don't hold lock while running task
-            let func = match Arc::try_unwrap(arc) {
+            
+            let func = match Arc::try_unwrap(arc) { // .unwrap() doesn't work for some reason
                 Ok(v) => v,
                 Err(_) => panic!("could not unwrap inner arc"),
             };
             func();
+            
             runningCounter.0.fetch_sub(1, Ordering::AcqRel);
             runningCounter.1.notify_all();
         }
     }
 }
 
-pub struct ScopedTask {
+pub struct ScopedTask<'a> {
     tasks: Arc<(Mutex<VecDeque<WorkFn>>, Condvar)>,
     done: Arc<(AtomicBool, Condvar)>,
+    phantom: PhantomData<&'a ()>, // informs the borrow checker this handle should only live as long as the user-supplied function
 }
 
-impl ScopedTask {
+impl<'a> ScopedTask<'a> {
     pub fn wait_done(&self) {
         // we need to block on the tasks mutex to prevent a thread grabbing the task
         // and running it between our check on self.done and the call to cond.wait
@@ -113,8 +118,8 @@ impl ScopedTask {
     }
 }
 
-// ensures the task is completed before the submitter's scope is exited
-impl Drop for ScopedTask {
+// call wait if the user hasn't already, should be basically no-op if they have
+impl<'a> Drop for ScopedTask<'a> {
     fn drop(&mut self) {
         self.wait_done();
     }
