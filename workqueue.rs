@@ -4,7 +4,7 @@ use std::thread::{JoinHandle, spawn};
 
 type WorkFn = Arc<Box<dyn FnOnce() + Send + Sync>>;
 
-struct WorkQueue {
+pub struct WorkQueue {
     workers: Vec<Option<JoinHandle<()>>>,
     tasks: Arc<(Mutex<VecDeque<WorkFn>>, Condvar)>,
     runningCounter: Arc<(AtomicUsize, Condvar)>,
@@ -33,6 +33,23 @@ impl WorkQueue {
         vec.push_back(Arc::new(Box::new(func)));
         drop(vec);
         self.tasks.1.notify_one();
+    }
+    
+    pub fn submit_scoped(&self, func: impl FnOnce() + Send + Sync) -> ScopedTask {
+        let done = Arc::new((AtomicBool::new(false), Condvar::new()));
+        let wrapper = {
+            let done = Arc::clone(&done);
+            
+            Box::new(move || {
+                func();
+                done.0.store(true, Ordering::Release);
+                done.1.notify_all();
+            })
+        };
+        let staticWrapper = unsafe { std::mem::transmute::<Box<dyn FnOnce() + Send + Sync>, Box<dyn FnOnce() + 'static + Send + Sync>>(wrapper) };
+        
+        self.submit(staticWrapper);
+        ScopedTask { tasks: Arc::clone(&self.tasks), done }
     }
     
     pub fn wait_done(&self) {
@@ -76,5 +93,29 @@ impl WorkQueue {
             runningCounter.0.fetch_sub(1, Ordering::AcqRel);
             runningCounter.1.notify_all();
         }
+    }
+}
+
+pub struct ScopedTask {
+    tasks: Arc<(Mutex<VecDeque<WorkFn>>, Condvar)>,
+    done: Arc<(AtomicBool, Condvar)>,
+}
+
+impl ScopedTask {
+    pub fn wait_done(&self) {
+        // we need to block on the tasks mutex to prevent a thread grabbing the task
+        // and running it between our check on self.done and the call to cond.wait
+        let mut lock = self.tasks.0.lock().unwrap();
+        
+        while !self.done.0.load(Ordering::Acquire) {
+            lock = self.done.1.wait(lock).unwrap();
+        }
+    }
+}
+
+// ensures the task is completed before the submitter's scope is exited
+impl Drop for ScopedTask {
+    fn drop(&mut self) {
+        self.wait_done();
     }
 }
