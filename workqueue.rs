@@ -5,6 +5,9 @@ use std::thread::{JoinHandle, spawn};
 
 type WorkFn = Arc<Box<dyn FnOnce() + Send + Sync>>;
 
+/**
+ * Distributed task queue. Spawns a number of worker threads that execute any submitted task.
+ */
 pub struct WorkQueue {
     workers: Vec<Option<JoinHandle<()>>>,
     tasks: Arc<(Mutex<VecDeque<WorkFn>>, Condvar)>,
@@ -13,6 +16,9 @@ pub struct WorkQueue {
 }
 
 impl WorkQueue {
+    /**
+     * Constructs a new work queue with the given number of worker threads.
+     */
     pub fn new(numWorkers: usize) -> Self {
         let mut workers = Vec::with_capacity(numWorkers);
         let tasks = Arc::new((Mutex::new(vec![].into()), Condvar::new()));
@@ -29,6 +35,10 @@ impl WorkQueue {
         Self { workers, tasks, runningCounter, shutdown }
     }
     
+    /**
+     * Submits the given callable into the queue. It will be received and ran by the first available worker thread.
+     * Must have only static references.
+     */
     pub fn submit(&self, func: impl FnOnce() + 'static + Send + Sync) {
         let mut vec = self.tasks.0.lock().unwrap();
         vec.push_back(Arc::new(Box::new(func)));
@@ -36,6 +46,10 @@ impl WorkQueue {
         self.tasks.1.notify_one();
     }
     
+    /**
+     * Submit the given callable into the queue, returning a handle that can be used to wait for the completion of the task.
+     * This permits callables with non-'static references.
+     */
     pub fn submit_scoped<'a>(&self, func: impl FnOnce() + 'a + Send + Sync) -> ScopedTask<'a> {
         let done = Arc::new((AtomicBool::new(false), Condvar::new()));
         let wrapper = {
@@ -53,6 +67,9 @@ impl WorkQueue {
         ScopedTask { tasks: Arc::clone(&self.tasks), done, phantom: PhantomData }
     }
     
+    /**
+     * Blocks the calling thread until the queue has been emptied, and all worker threads have finished processing.
+     */
     pub fn wait_done(&self) {
         let mut tasks = self.tasks.0.lock().unwrap();
         
@@ -61,6 +78,9 @@ impl WorkQueue {
         }
     }
     
+    /**
+     * Waits for the queue to empty, then terminates all worker threads.
+     */
     pub fn shutdown(mut self) {
         self.shutdown.store(true, Ordering::Release);
         
@@ -100,6 +120,12 @@ impl WorkQueue {
     }
 }
 
+/**
+ * Handle to a task submitted with submit_scoped.
+ * 
+ * For task functions which are not 'static (i.e. taking borrows of items owned in the submitter's scope,)
+ * this ensures the function cannot outlive any borrows.
+ */
 pub struct ScopedTask<'a> {
     tasks: Arc<(Mutex<VecDeque<WorkFn>>, Condvar)>,
     done: Arc<(AtomicBool, Condvar)>,
@@ -107,6 +133,9 @@ pub struct ScopedTask<'a> {
 }
 
 impl<'a> ScopedTask<'a> {
+    /**
+     * Blocks the calling thread until the underlying task has been executed to completion by a worker thread.
+     */
     pub fn wait_done(&self) {
         // we need to block on the tasks mutex to prevent a thread grabbing the task
         // and running it between our check on self.done and the call to cond.wait
