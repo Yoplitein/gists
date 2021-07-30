@@ -4,6 +4,7 @@ syn = "1.0.74"
 quote = "1.0.9"
 proc-macro2 = "1.0.27"
 */
+#![allow(non_snake_case)]
 
 use proc_macro2::{TokenStream, TokenTree};
 use syn::{parse_macro_input, AttrStyle, DeriveInput};
@@ -43,13 +44,17 @@ pub fn conv_repr_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStre
             syn::Fields::Unit => {},
             _ => panic!("derive(ConvRepr) enums must not use fields"),
         }
-        if variant.discriminant.is_some() {
-            // TODO: allow if ranges do not overlap
-            panic!("derive(ConvRepr) enums must not specify a discriminant");
+        if let Some((_, ref expr)) = variant.discriminant {
+            if let syn::Expr::Lit(syn::ExprLit { lit: syn::Lit::Int(val), .. }) = expr {
+                let val = val.base10_parse::<isize>().expect("failed to parse discriminator literal");
+                repr = val;
+            } else {
+                panic!("expected enum discriminant to be a literal integer");
+            }
         }
-		
-        let unsuffixed = proc_macro2::Literal::isize_unsuffixed(repr);
         let ref id = variant.ident;
+        
+        let unsuffixed = proc_macro2::Literal::isize_unsuffixed(repr);
         fromArms.extend(quote !{
             #unsuffixed => #name::#id,
         });
@@ -64,18 +69,16 @@ pub fn conv_repr_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStre
             fn from(v: #reprType) -> Self {
                 match v {
                     #fromArms
-                    _ => panic!("cannot convert {} to a {}", stringify!(#name), stringify!(#reprType)),
+                    _ => panic!("enum {} has no variant with a discriminant of {}", stringify!(#name), v),
                 }
             }
         }
         
         impl From<#name> for #reprType {
             fn from(v: #name) -> Self {
-                let res = match v {
+                match v {
                     #toArms
-                    _ => panic!("cannot convert {} to a {}", stringify!(#reprType), stringify!(#name)),
-                };
-                res
+                }
             }
         }
     };
