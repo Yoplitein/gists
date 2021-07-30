@@ -56,7 +56,7 @@ pub fn conv_repr_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStre
         
         let unsuffixed = proc_macro2::Literal::isize_unsuffixed(repr);
         fromArms.extend(quote !{
-            #unsuffixed => #name::#id,
+            #unsuffixed => Ok(#name::#id),
         });
         toArms.extend(quote !{
             #name::#id => #unsuffixed,
@@ -65,11 +65,12 @@ pub fn conv_repr_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStre
     }
     
     let impls = quote! {
-        impl From<#reprType> for #name {
-            fn from(v: #reprType) -> Self {
+        impl std::convert::TryFrom<#reprType> for #name {
+            type Error = String;
+            fn try_from(v: #reprType) -> Result<Self, Self::Error> {
                 match v {
                     #fromArms
-                    _ => panic!("enum {} has no variant with a discriminant of {}", stringify!(#name), v),
+                    _ => Err(format!("enum {} has no variant with a discriminant of {}", stringify!(#name), v))
                 }
             }
         }
