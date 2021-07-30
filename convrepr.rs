@@ -34,10 +34,10 @@ pub fn conv_repr_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStre
         syn::Data::Enum(ref v) => v,
         _ => panic!("derive(ConvRepr) only works on enums")
     };
-        
+    
     let mut fromArms = TokenStream::new();
     let mut toArms = TokenStream::new();
-    let mut repr: usize = 0;
+    let mut repr: isize = 0;
     for variant in enumData.variants.iter() {
         match variant.fields {
             syn::Fields::Unit => {},
@@ -47,13 +47,14 @@ pub fn conv_repr_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStre
             // TODO: allow if ranges do not overlap
             panic!("derive(ConvRepr) enums must not specify a discriminant");
         }
-        
+		
+        let unsuffixed = proc_macro2::Literal::isize_unsuffixed(repr);
         let ref id = variant.ident;
         fromArms.extend(quote !{
-            #repr => #name::#id,
+            #unsuffixed => #name::#id,
         });
         toArms.extend(quote !{
-            #name::#id => #repr,
+            #name::#id => #unsuffixed,
         });
         repr += 1;
     }
@@ -61,7 +62,6 @@ pub fn conv_repr_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStre
     let impls = quote! {
         impl From<#reprType> for #name {
             fn from(v: #reprType) -> Self {
-                let v = v as usize;
                 match v {
                     #fromArms
                     _ => panic!("cannot convert {} to a {}", stringify!(#name), stringify!(#reprType)),
@@ -75,7 +75,7 @@ pub fn conv_repr_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStre
                     #toArms
                     _ => panic!("cannot convert {} to a {}", stringify!(#reprType), stringify!(#name)),
                 };
-                res as Self
+                res
             }
         }
     };
