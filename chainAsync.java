@@ -15,8 +15,8 @@ static CompletableFuture<Void> chainAsync(Stream<CompletableFuture<?>> tasks, Ex
 	final var iter = tasks.iterator();
 	
 	final var nextFutures = new CompletableFuture[parallel];
-	final var scheduleNext = new Cell<Runnable>(null);
-	scheduleNext.val = () -> {
+	final var scheduleNext = new Runnable[1]; // work around inability of lambdas to self-reference
+	scheduleNext[0] = () -> {
 		try
 		{
 			if(!iter.hasNext())
@@ -38,7 +38,7 @@ static CompletableFuture<Void> chainAsync(Stream<CompletableFuture<?>> tasks, Ex
 				}
 				
 				final var next = CompletableFuture.allOf(nextFutures);
-				next.thenRunAsync(scheduleNext.val, pool);
+				next.thenRunAsync(scheduleNext[0], pool);
 				next.exceptionallyAsync(err -> { done.completeExceptionally(err); return null; }, pool);
 			}
 		}
@@ -47,7 +47,7 @@ static CompletableFuture<Void> chainAsync(Stream<CompletableFuture<?>> tasks, Ex
 			done.completeExceptionally(err);
 		}
 	};
-	scheduleNext.val.run();
+	scheduleNext[0].run();
 	
 	return done;
 }
