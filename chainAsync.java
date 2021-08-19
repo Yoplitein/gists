@@ -27,7 +27,9 @@ static CompletableFuture<Void> chainAsync(Stream<CompletableFuture<?>> tasks, Ex
 				done.complete(null);
 			else
 			{
+				// taking subarray is inefficient, so fill remainder with bogus task
 				Arrays.fill(nextFutures, empty);
+				
 				for(int i = 0; i < parallel; i++)
 				{
 					if(!iter.hasNext()) break;
