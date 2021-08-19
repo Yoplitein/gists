@@ -33,14 +33,7 @@ static CompletableFuture<Void> chainAsync(Stream<CompletableFuture<?>> tasks, Ex
 				for(int i = 0; i < parallel; i++)
 				{
 					if(!iter.hasNext()) break;
-					
-					try { nextFutures[i] = iter.next(); }
-					catch(Throwable err)
-					{
-						done.completeExceptionally(err);
-						for(var task: nextFutures) task.completeExceptionally(err);
-						return;
-					}
+					nextFutures[i] = iter.next();
 				}
 				
 				final var next = CompletableFuture.allOf(nextFutures);
@@ -48,9 +41,11 @@ static CompletableFuture<Void> chainAsync(Stream<CompletableFuture<?>> tasks, Ex
 				next.exceptionallyAsync(err -> { done.completeExceptionally(err); return null; }, pool);
 			}
 		}
+		// handle cases where stream logic throws
 		catch(Throwable err)
 		{
 			done.completeExceptionally(err);
+			for(var task: nextFutures) task.completeExceptionally(err);
 		}
 	};
 	scheduleNext[0].run();
