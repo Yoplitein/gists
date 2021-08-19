@@ -1,6 +1,10 @@
 /**
-	Sequentially schedules a series of CompletableFutures on the given executor.
-	i.e. earlier futures must complete before subsequent futures are scheduled
+	Sequentially schedules a series of CompletableFutures, i.e. earlier futures
+	must complete before subsequent futures are scheduled.
+	
+	Assumes tasks is a stream which generates futures on demand.
+	A stream over an existing set of futures will not work as expected,
+	as they all will have already been scheduled.
 */
 static CompletableFuture<Void> chainAsync(Stream<CompletableFuture<?>> tasks, Executor pool)
 {
