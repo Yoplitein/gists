@@ -1,29 +1,19 @@
 import core.thread;
 import std.experimental.logger;
-import std.stdio;
 import std.datetime;
 static import vibe.core.log;
 
-//std.logger's default logger must be an instance of a class that implements this
-interface StdLoggerBridge
+// has to be in a separate class as Logger.LogEntry is protected :facepalm:
+class StdLogger: StdForwardLogger
 {
-    //required for VibeLogger to pass the logging data to std.logger's internal bits
-    void writeVibeMessage(string mod, string func, string file, int line, LogLevel level, SysTime time, string text) @safe;
-}
-
-class StdLogger: FileLogger, StdLoggerBridge
-{
-    this(in string fn, const LogLevel lv = LogLevel.info) @safe
+    @safe:
+    
+    this()
     {
-        super(fn, lv);
-    }
-
-    this(File file, const LogLevel lv = LogLevel.info) @safe
-    {
-        super(file, lv);
+        super(LogLevel.all);
     }
     
-    void writeVibeMessage(string mod, string func, string file, int line, LogLevel level, SysTime time, string text) @safe
+    void writeVibeMessage(string mod, string func, string file, int line, LogLevel level, SysTime time, string text)
     {
         LogEntry entry;
         entry.file = file;
@@ -43,9 +33,12 @@ class StdLogger: FileLogger, StdLoggerBridge
 
 class VibeLogger: vibe.core.log.Logger
 {
+    private StdLogger stdLogger;
+    
     this(vibe.core.log.LogLevel minLevel)
     {
         this.minLevel = minLevel;
+        stdLogger = new StdLogger();
     }
     
     override void log(ref vibe.core.log.LogLine line) @safe
@@ -60,6 +53,7 @@ class VibeLogger: vibe.core.log.Logger
                 break;
             case debugV:
             case debug_:
+            case diagnostic:
             case trace:
                 level = LogLevel.trace;
                 
@@ -72,7 +66,6 @@ class VibeLogger: vibe.core.log.Logger
                 level = LogLevel.warning;
                 
                 break;
-            case diagnostic:
             case error:
                 level = LogLevel.error;
                 
@@ -87,16 +80,11 @@ class VibeLogger: vibe.core.log.Logger
                 break;
         }
         
-        StdLogger logger = cast(StdLogger)sharedLog;
         string moduleName = line.mod;
-        
-        if(logger is null)
-            throw new Exception("sharedLog does not implement writeVibeMessage");
-        
         if(moduleName == "")
             moduleName = "???";
         
-        logger.writeVibeMessage(
+        stdLogger.writeVibeMessage(
             moduleName,
             line.func,
             line.file,
@@ -110,9 +98,6 @@ class VibeLogger: vibe.core.log.Logger
 
 shared static this()
 {
-    //register our std.logger logger, with writeVibeMessage method
-    sharedLog = new StdLogger(stdout, LogLevel.all);
-    
     //disable default Vibe logger
     vibe.core.log.setLogLevel(vibe.core.log.LogLevel.none);
     
