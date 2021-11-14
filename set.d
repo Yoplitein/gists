@@ -59,6 +59,7 @@ unittest
 	auto set = Set!int();
 	set.add(1);
 	set.add(2);
+	set.add(2);
 	set.add(3);
 	
 	assert(1 in set && 2 in set && 3 in set);
