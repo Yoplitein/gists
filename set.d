@@ -1,6 +1,6 @@
 struct Set(T)
 {
-	private alias Nil = void[0];
+	private alias Nil = void[0]; // superior to empty struct, has .sizeof == 0
 	private Nil[T] set;
 	
 	void add(T v)
