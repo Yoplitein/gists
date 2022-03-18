@@ -95,8 +95,6 @@ def main():
 			log("Error: cannot ignore root directory")
 			raise SystemExit(1)
 	
-	print(root, pathToStrip)
-	
 	clean = set()
 	if args.cleanFiles:
 		with args.cleanFiles:
