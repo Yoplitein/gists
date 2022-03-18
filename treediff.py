@@ -66,6 +66,7 @@ def main():
 		dest="ignored",
 		action="append",
 		type=directory,
+		default=[],
 		help="Add a directory to ignore when gathering the list of files.",
 	)
 	args = parser.parse_args()
