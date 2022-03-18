@@ -86,6 +86,10 @@ def main():
 		if not root in dir:
 			log(f"Error: ignored dir `{dir}` is not a child of the root directory")
 			raise SystemExit(1)
+		
+		if dir == root:
+			log("Error: cannot ignore root directory")
+			raise SystemExit(1)
 	
 	clean = set()
 	if args.cleanFiles:
