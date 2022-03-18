@@ -41,7 +41,6 @@ def main():
 		
 	)
 	parser.add_argument("root",
-		metavar="dir",
 		nargs=1,
 		type=directory,
 		help="Root directory to search for files.",
@@ -62,6 +61,13 @@ def main():
 			"This should be the corresponding directory specified as a root when generating the clean list"
 		,
 	)
+	parser.add_argument("-i", "--ignore",
+		metavar="dir",
+		dest="ignored",
+		action="append",
+		type=directory,
+		help="Add a directory to ignore when gathering the list of files.",
+	)
 	args = parser.parse_args()
 	
 	root = args.root[0]
@@ -75,6 +81,11 @@ def main():
 			raise SystemExit(1)
 		
 		outputPrefix = p.dirname(args.basePath)
+	
+	for dir in args.ignored:
+		if not root in dir:
+			log(f"Error: ignored dir `{dir}` is not a child of the root directory")
+			raise SystemExit(1)
 	
 	clean = set()
 	if args.cleanFiles:
@@ -101,6 +112,8 @@ def main():
 	
 	current = set()
 	for dir, _, files in os.walk(root):
+		if any(x in dir for x in args.ignored): continue
+		
 		base = p.relpath(dir, outputPrefix)
 		for file in files:
 			current.add(p.join(base, file))
