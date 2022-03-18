@@ -73,15 +73,18 @@ def main():
 	
 	root = args.root[0]
 	
-	outputPrefix = None
+	expectedPrefix = None
+	pathToStrip = None
 	if not args.basePath:
-		outputPrefix = p.dirname(root)
+		expectedPrefix = p.basename(root)
+		pathToStrip = p.dirname(root)
 	else:
 		if not args.basePath in root:
 			log(f"Error: base path must be a parent of diff root")
 			raise SystemExit(1)
 		
-		outputPrefix = p.dirname(args.basePath)
+		expectedPrefix = p.basename(args.basePath)
+		pathToStrip = p.dirname(args.basePath)
 	
 	for dir in args.ignored:
 		if not root in dir:
@@ -92,6 +95,8 @@ def main():
 			log("Error: cannot ignore root directory")
 			raise SystemExit(1)
 	
+	print(root, pathToStrip)
+	
 	clean = set()
 	if args.cleanFiles:
 		with args.cleanFiles:
@@ -100,11 +105,11 @@ def main():
 				file = file.strip()
 				if file == "": continue
 				
-				if not file.startswith(outputPrefix):
+				if not file.startswith(expectedPrefix):
 					itsRoot = file.split("/")[0] or "/"
 					log(
 						f"Error: {filename}:{line + 1} has base path `{itsRoot}` " +
-						f"but expected base path is `{outputPrefix}`"
+						f"but expected base path is `{expectedPrefix}`"
 					)
 					raise SystemExit(1)
 				
@@ -119,7 +124,7 @@ def main():
 	for dir, _, files in os.walk(root):
 		if any(x in dir for x in args.ignored): continue
 		
-		base = p.relpath(dir, outputPrefix)
+		base = p.relpath(dir, pathToStrip)
 		for file in files:
 			current.add(p.join(base, file))
 	
