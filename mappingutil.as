@@ -86,4 +86,4 @@ void commandNoclip(const CCommand@ cmd)
 
 CClientCommand commandTexTraceObj("textrace", "", @commandTexTrace);
 CClientCommand commandSetposObj("setpos", "", @commandSetpos);
-CClientCommand commandSetposObj("noclip", "", @commandNoclip);
+CClientCommand commandNoclipObj("noclip", "", @commandNoclip);
