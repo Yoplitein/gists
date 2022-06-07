@@ -21,34 +21,21 @@ struct Set(T)
 	
 	auto range()
 	{
-		return set.keys;
+		return set.byKey;
 	}
 	
 	int opApply(scope int delegate(T) fn)
 	{
-		return opApplyImpl!false((_, v) => fn(v));
+		return opApply((_, v) => fn(v));
 	}
 	
 	int opApply(scope int delegate(size_t, T) fn)
 	{
-		return opApplyImpl!false(fn);
-	}
-	
-	int opApplyReverse(scope int delegate(T) fn)
-	{
-		return opApplyImpl!true((_, v) => fn(v));
-	}
-	
-	int opApplyReverse(scope int delegate(size_t, T) fn)
-	{
-		return opApplyImpl!true(fn);
-	}
-	
-	private int opApplyImpl(bool reverse)(scope int delegate(size_t, T) fn)
-	{
-		enum inner = "if(auto ret = fn(i, v) != 0) return ret;";
-		mixin("foreach", reverse ? "_reverse" : "", "(i, v; range) ", inner);
-		return 0;
+        import std.range: enumerate;
+		foreach(i, v; range.enumerate)
+            if(auto ret = fn(i, v) != 0)
+            	return ret;
+        return 0;
 	}
 }
 
@@ -63,18 +50,14 @@ unittest
 	set.add(3);
 	
 	assert(1 in set && 2 in set && 3 in set);
-	assert(set.range.sort.equal([1, 2, 3]));
+	assert(set.range.array.sort.equal([1, 2, 3]));
 	
 	set.remove(2);
 	assert(2 !in set);
-	assert(set.range.sort.equal([1, 3]));
+	assert(set.range.array.sort.equal([1, 3]));
 	
 	foreach(v; set)
 		assert(v == 1 || v == 3);
-	foreach_reverse(v; set)
-		assert(v == 1 || v == 3);
 	foreach(i, v; set)
-		assert((i == 0 || i == 1) && (v == 1 || v == 3));
-	foreach_reverse(i, v; set)
 		assert((i == 0 || i == 1) && (v == 1 || v == 3));
 }
