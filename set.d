@@ -1,5 +1,7 @@
 struct Set(T)
 {
+	private import std.range: empty, enumerate;
+	
 	private alias Nil = void[0]; // superior to empty struct, has .sizeof == 0
 	private Nil[T] set;
 	
@@ -13,15 +15,20 @@ struct Set(T)
 		set.remove(v);
 	}
 	
-	bool opBinaryRight(string op)(T v)
-	if(op == "in")
+	bool empty()
 	{
-		return (v in set) != null;
+		return set.empty;
 	}
 	
 	auto range()
 	{
 		return set.byKey;
+	}
+	
+	bool opBinaryRight(string op)(T v)
+	if(op == "in")
+	{
+		return (v in set) != null;
 	}
 	
 	int opApply(scope int delegate(T) fn)
@@ -31,7 +38,6 @@ struct Set(T)
 	
 	int opApply(scope int delegate(size_t, T) fn)
 	{
-		import std.range: enumerate;
 		foreach(i, v; range.enumerate)
 			if(auto ret = fn(i, v) != 0)
 				return ret;
@@ -41,16 +47,18 @@ struct Set(T)
 
 unittest
 {
-	import std.algorithm: equal, sort;
+	import std: array, equal, sort;
 	
 	auto set = Set!int();
+	assert(set.empty);
+	
 	set.add(1);
 	set.add(2);
 	set.add(2);
 	set.add(3);
-	
 	assert(1 in set && 2 in set && 3 in set);
 	assert(set.range.array.sort.equal([1, 2, 3]));
+	assert(!set.empty);
 	
 	set.remove(2);
 	assert(2 !in set);
