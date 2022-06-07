@@ -31,11 +31,11 @@ struct Set(T)
 	
 	int opApply(scope int delegate(size_t, T) fn)
 	{
-        import std.range: enumerate;
+		import std.range: enumerate;
 		foreach(i, v; range.enumerate)
-            if(auto ret = fn(i, v) != 0)
-            	return ret;
-        return 0;
+			if(auto ret = fn(i, v) != 0)
+				return ret;
+		return 0;
 	}
 }
 
