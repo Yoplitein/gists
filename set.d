@@ -25,6 +25,15 @@ struct Set(T)
 		return set.byKey;
 	}
 	
+	void opOpAssign(string op)(T v)
+	if(op == "+" || op == "-")
+	{
+		static if(op == "+")
+			add(v);
+		else
+			remove(v);
+	}
+	
 	bool opBinaryRight(string op)(T v)
 	if(op == "in")
 	{
@@ -49,6 +58,16 @@ unittest
 {
 	import std: array, equal, sort;
 	
+	bool setEqual(ref Set!int set, int[] expected)
+	{
+		return set
+			.range
+			.array
+			.sort
+			.equal(expected)
+		;
+	}
+	
 	auto set = Set!int();
 	assert(set.empty);
 	
@@ -56,13 +75,15 @@ unittest
 	set.add(2);
 	set.add(2);
 	set.add(3);
-	assert(1 in set && 2 in set && 3 in set);
-	assert(set.range.array.sort.equal([1, 2, 3]));
+	set += 4;
+	assert(1 in set && 2 in set && 3 in set && 4 in set);
+	assert(setEqual(set, [1, 2, 3, 4]));
 	assert(!set.empty);
 	
 	set.remove(2);
-	assert(2 !in set);
-	assert(set.range.array.sort.equal([1, 3]));
+	set -= 4;
+	assert(2 !in set && 4 !in set);
+	assert(setEqual(set, [1, 3]));
 	
 	foreach(v; set)
 		assert(v == 1 || v == 3);
