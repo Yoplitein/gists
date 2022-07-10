@@ -1,6 +1,6 @@
 struct Set(T)
 {
-	private import std.range: empty, enumerate;
+	private import std.range: empty, enumerate, takeExactly;
 	
 	private alias This = typeof(this);
 	private alias Nil = void[0]; // superior to empty struct, has .sizeof == 0
@@ -28,8 +28,15 @@ struct Set(T)
 	
 	auto range() inout
 	{
-		return set.byKey;
+		// `byKey` doesn't have length, but `takeExactly` will imbue it with one
+		return set.byKey.takeExactly(set.length);
 	}
+	
+	size_t cardinality() const
+	{
+		return set.length;
+	}
+	alias length = cardinality;
 	
 	This dup() const
 	{
@@ -115,6 +122,8 @@ unittest
 	assert(1 in set && 2 in set && 3 in set && 4 in set);
 	assert(setEqual(set, [1, 2, 3, 4]));
 	assert(!set.empty);
+	assert(set.cardinality == 4);
+	assert(set.range.length == 4);
 	
 	set.remove(2);
 	set -= 4;
