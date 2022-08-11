@@ -36,10 +36,15 @@ struct RingBuffer(T, size_t _capacity)
 	{
 		static struct Range
 		{
-			T[] buffer;
-			size_t read, len;
+			private
+			{
+				T[] buffer;
+				size_t read, len;
+			}
 			
 			bool empty() { return len == 0; }
+			
+			size_t length() { return len; }
 			
 			ref T front()
 			in(!empty)
@@ -54,6 +59,26 @@ struct RingBuffer(T, size_t _capacity)
 			}
 		}
 		return Range(buffer[], read, len);
+	}
+	
+	int opApply(scope int delegate(size_t index, ref T element) dg)
+	{
+		auto ptr = read;
+		foreach(i; 0 .. len)
+		{
+			if(auto res = dg(i, buffer[ptr++]))
+				return res;
+			ptr %= capacity;
+		}
+		return 0;
+	}
+	
+	int opApply(scope int delegate(ref T element) dg)
+	{
+		foreach(_, ref v; this)
+			if(auto res = dg(v))
+				return res;
+		return 0;
 	}
 }
 
