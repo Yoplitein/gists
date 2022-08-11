@@ -10,8 +10,11 @@ struct RingBuffer(T, size_t _capacity)
 		size_t len; // keep it simple :^)
 	}
 	
-	enum capacity = _capacity;
+	invariant(read < capacity);
+	invariant(write < capacity);
+	invariant(len <= capacity);
 	
+	enum capacity = _capacity;
 	size_t length() { return len; }
 	
 	void push(T rhs)
