@@ -1,6 +1,9 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::alloc;
 
+#[global_allocator]
+static COUNTING_ALLOC: CountingAlloc = CountingAlloc::new();
+
 struct CountingAlloc {
     used: AtomicUsize,
 }
